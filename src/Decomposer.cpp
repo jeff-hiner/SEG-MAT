@@ -53,19 +53,19 @@ void Decomposer::decompose3Dshape(MAT& mat, MAT& smat, Mesh& mesh, float growing
 	mat.meshTree = &tree;
 
 	//strucural decomposition
-	cout << "structural decomposition ..." << endl;
+	// cout removed for WASM compatibility
 	smat.StructureDecompose();
 	mat.tag_ratio = smat.tag_ratio;
 	smat.densify(smat.thin_parts, smat);
 	smat.densify(smat.normal_parts, smat);
 	vector<int> labels = mat.transfer_SMAT_MAT(smat.thin_parts, smat.normal_parts);
 
-	cout << "geometrical decomposition (region growing) ..." << endl;
+	// cout removed for WASM compatibility
 	//geometrical decomposition
 	vector<vector<int>> graph = mat.buildMATGraph();
 	mat.RegionGrowing(graph, labels, growing_threshold, min_region);
 
-	cout << "merging  ..." << endl;
+	// cout removed for WASM compatibility
 	mat.MergeTinyPatches();
 	mat.MergeIterations();
 }

@@ -170,7 +170,7 @@ template <typename captype, typename tcaptype, typename flowtype>
 
 	TIME ++;
 
-	while ((i=queue))
+	while ((i=queue) != NULL)
 	{
 		queue = i->next;
 		if (queue == i) queue = NULL;
@@ -226,7 +226,7 @@ template <typename captype, typename tcaptype, typename flowtype>
 	//test_consistency();
 
 	/* adoption */
-	while ((np=orphan_first))
+	while ((np=orphan_first) != NULL)
 	{
 		orphan_first = np -> next;
 		i = np -> ptr;
@@ -363,7 +363,7 @@ template <typename captype, typename tcaptype, typename flowtype>
 		}
 	}
 
-	if (i->parent = a0_min)
+	if ((i->parent = a0_min))
 	{
 		i -> TS = TIME;
 		i -> DIST = d_min + 1;
@@ -440,7 +440,7 @@ template <typename captype, typename tcaptype, typename flowtype>
 		}
 	}
 
-	if (i->parent = a0_min)
+	if ((i->parent = a0_min))
 	{
 		i -> TS = TIME;
 		i -> DIST = d_min + 1;
@@ -570,12 +570,12 @@ template <typename captype, typename tcaptype, typename flowtype>
 			/* augmentation end */
 
 			/* adoption */
-			while ((np=orphan_first))
+			while ((np=orphan_first) != NULL)
 			{
 				np_next = np -> next;
 				np -> next = NULL;
 
-				while ((np=orphan_first))
+				while ((np=orphan_first) != NULL)
 				{
 					orphan_first = np -> next;
 					i = np -> ptr;

@@ -19,8 +19,9 @@ E-Mail: rubner@cs.stanford.edu   URL: http://vision.stanford.edu/~rubner
 /* DEFINITIONS */
 #define MAX_SIG_SIZE   100
 #define MAX_ITERATIONS 500
-#define INFINITY       1e20
-#define EPSILON0        1e-6
+// Renamed from INFINITY to avoid conflict with math.h's INFINITY
+#define EMD_INFINITY   1e20
+#define EPSILON0       1e-6
 
 /*****************************************************************************/
 /* feature_t SHOULD BE MODIFIED BY THE USER TO REFLECT THE FEATURE TYPE      */

@@ -1,4 +1,6 @@
 // SEG-MAT WASM Buffer API Implementation
+// Caller-allocated buffer design - no WASM memory management needed
+
 #include "segmat_wasm_api.h"
 #include "src/Decomposer.h"
 #include <cstdlib>
@@ -6,9 +8,9 @@
 #include <new>
 #include <set>
 
-// Memory management exports
 extern "C" {
 
+// Memory management exports for Python wrapper to allocate WASM memory
 void* wasm_malloc(size_t size) {
     return malloc(size);
 }
@@ -17,173 +19,152 @@ void wasm_free(void* ptr) {
     free(ptr);
 }
 
-} // extern "C"
-
-// Create error result
-static void* create_error_result(int32_t error_code) {
-    void* result = wasm_malloc(12);  // Header only: error, face_count, label_count
-    if (result) {
-        int32_t* header = static_cast<int32_t*>(result);
-        header[0] = error_code;
-        header[1] = 0;  // face_count
-        header[2] = 0;  // label_count
-    }
-    return result;
-}
-
-extern "C" {
-
-void* segmat_segment_buffer(
-    // Surface mesh
-    int32_t mesh_vertex_count,
-    int32_t mesh_face_count,
-    const float* mesh_vertices,
-    const int32_t* mesh_faces,
-
-    // Base MAT
-    int32_t base_mat_vertex_count,
-    int32_t base_mat_edge_count,
-    int32_t base_mat_face_count,
-    const float* base_mat_vertices,
-    const float* base_mat_radii,
-    const int32_t* base_mat_edges,
-    const int32_t* base_mat_faces,
-
-    // Structure MAT
-    int32_t struct_mat_vertex_count,
-    int32_t struct_mat_edge_count,
-    int32_t struct_mat_face_count,
-    const float* struct_mat_vertices,
-    const float* struct_mat_radii,
-    const int32_t* struct_mat_edges,
-    const int32_t* struct_mat_faces,
-
-    // Parameters
-    float growing_threshold,
-    float min_region)
+int32_t segmat_segment(
+    const WasmMesh* mesh,
+    const WasmMAT* base_mat,
+    const WasmMAT* struct_mat,
+    const SEGMATParams* params,
+    Int32SliceMut* labels,
+    int32_t* unique_label_count)
 {
-    // Validate mesh inputs
-    if (mesh_vertex_count <= 0 || mesh_face_count <= 0 ||
-        !mesh_vertices || !mesh_faces) {
-        return create_error_result(SEGMAT_ERR_INVALID);
+    // Validate null pointers
+    if (!mesh || !base_mat || !params || !labels || !unique_label_count) {
+        return SEGMAT_ERR_NULL_PTR;
     }
 
-    // Validate base MAT inputs
-    if (base_mat_vertex_count <= 0 || !base_mat_vertices || !base_mat_radii) {
-        return create_error_result(SEGMAT_ERR_INVALID);
+    // Validate mesh data
+    size_t mesh_vertex_count = mesh->vertices.len;
+    size_t mesh_face_count = mesh->faces.len;
+
+    if (mesh_vertex_count == 0 || !mesh->vertices.ptr) {
+        return SEGMAT_ERR_INVALID_SIZE;
+    }
+    if (mesh_face_count == 0 || !mesh->faces.ptr) {
+        return SEGMAT_ERR_INVALID_SIZE;
     }
 
-    // Validate struct MAT inputs (can be empty/null for no structural decomposition)
-    // We'll allow empty struct MAT
+    // Validate base MAT data
+    size_t base_vertex_count = base_mat->centers.len;
+    size_t base_edge_count = base_mat->edges.len;
+    size_t base_face_count = base_mat->faces.len;
 
-    void* result = nullptr;
+    if (base_vertex_count == 0 || !base_mat->centers.ptr || !base_mat->radii.ptr) {
+        return SEGMAT_ERR_INVALID_SIZE;
+    }
+    if (base_mat->radii.len != base_vertex_count) {
+        return SEGMAT_ERR_INVALID_SIZE;
+    }
+    if (base_edge_count > 0 && !base_mat->edges.ptr) {
+        return SEGMAT_ERR_INVALID_SIZE;
+    }
+    if (base_face_count > 0 && !base_mat->faces.ptr) {
+        return SEGMAT_ERR_INVALID_SIZE;
+    }
+
+    // Validate output buffer capacity (must hold one label per mesh face)
+    if (!labels->ptr || labels->len < mesh_face_count) {
+        return SEGMAT_ERR_BUFFER_TOO_SMALL;
+    }
+
+    // Structure MAT can be empty (zero-length slices)
+    size_t struct_vertex_count = struct_mat ? struct_mat->centers.len : 0;
+    size_t struct_edge_count = struct_mat ? struct_mat->edges.len : 0;
+    size_t struct_face_count = struct_mat ? struct_mat->faces.len : 0;
+
+    // Validate struct MAT if present
+    if (struct_vertex_count > 0) {
+        if (!struct_mat->centers.ptr || !struct_mat->radii.ptr) {
+            return SEGMAT_ERR_INVALID_SIZE;
+        }
+        if (struct_mat->radii.len != struct_vertex_count) {
+            return SEGMAT_ERR_INVALID_SIZE;
+        }
+        if (struct_edge_count > 0 && !struct_mat->edges.ptr) {
+            return SEGMAT_ERR_INVALID_SIZE;
+        }
+        if (struct_face_count > 0 && !struct_mat->faces.ptr) {
+            return SEGMAT_ERR_INVALID_SIZE;
+        }
+    }
 
     try {
-        // Create mesh from buffers
-        Mesh mesh = Decomposer::createMeshFromBuffers(
-            mesh_vertices, mesh_vertex_count,
-            mesh_faces, mesh_face_count);
+        // DEBUG: Return checkpoint codes to identify crash location
+        // -100 = after mesh creation, -101 = after smat, -102 = after mat, etc.
 
-        if (mesh.number_of_faces() == 0) {
-            return create_error_result(SEGMAT_ERR_TOPOLOGY);
+        // Create mesh from buffers
+        // Note: Decomposer::createMeshFromBuffers expects vertex count, not float count
+        Mesh cgal_mesh = Decomposer::createMeshFromBuffers(
+            mesh->vertices.ptr,
+            static_cast<int>(mesh_vertex_count),
+            mesh->faces.ptr,
+            static_cast<int>(mesh_face_count));
+
+        if (cgal_mesh.number_of_faces() == 0) {
+            return SEGMAT_ERR_TOPOLOGY;
         }
 
-        // Create structure MAT
+        // Create structure MAT (can be empty)
         MAT smat;
-        if (struct_mat_vertex_count > 0 && struct_mat_vertices && struct_mat_radii) {
+        if (struct_vertex_count > 0) {
             smat = MAT(
-                struct_mat_vertices,
-                struct_mat_radii,
-                struct_mat_vertex_count,
-                struct_mat_edges,
-                struct_mat_edge_count,
-                struct_mat_faces,
-                struct_mat_face_count,
-                mesh);
+                struct_mat->centers.ptr,
+                struct_mat->radii.ptr,
+                static_cast<int>(struct_vertex_count),
+                struct_mat->edges.ptr,
+                static_cast<int>(struct_edge_count),
+                struct_mat->faces.ptr,
+                static_cast<int>(struct_face_count),
+                cgal_mesh);
         }
 
         // Create base MAT
         MAT mat(
-            base_mat_vertices,
-            base_mat_radii,
-            base_mat_vertex_count,
-            base_mat_edges,
-            base_mat_edge_count,
-            base_mat_faces,
-            base_mat_face_count,
-            mesh);
+            base_mat->centers.ptr,
+            base_mat->radii.ptr,
+            static_cast<int>(base_vertex_count),
+            base_mat->edges.ptr,
+            static_cast<int>(base_edge_count),
+            base_mat->faces.ptr,
+            static_cast<int>(base_face_count),
+            cgal_mesh);
 
         if (mat.points.size() == 0) {
-            return create_error_result(SEGMAT_ERR_INVALID);
+            return SEGMAT_ERR_INVALID_SIZE;
         }
 
-        // Perform segmentation
+        // Perform segmentation - this calls cout which needs WASI
         Decomposer solver;
-        solver.decompose3Dshape(mat, smat, mesh, growing_threshold, min_region);
-        solver.transfer_MAT_mesh(mat, mesh, 0.3f);
+        solver.decompose3Dshape(mat, smat, cgal_mesh, params->growing_threshold, params->min_region);
+        solver.transfer_MAT_mesh(mat, cgal_mesh, 0.3f);
 
         // Get results
-        const vector<int>& labels = solver.final_facelabel;
-        int32_t face_count = static_cast<int32_t>(labels.size());
+        const vector<int>& result_labels = solver.final_facelabel;
+        size_t result_count = result_labels.size();
+
+        // Verify result count matches mesh faces
+        if (result_count != mesh_face_count) {
+            return SEGMAT_ERR_SEGMENT;
+        }
+
+        // Copy labels to caller-provided buffer
+        for (size_t i = 0; i < result_count; i++) {
+            labels->ptr[i] = static_cast<int32_t>(result_labels[i]);
+        }
+
+        // Update output length
+        labels->len = result_count;
 
         // Count distinct labels
-        std::set<int> unique_labels(labels.begin(), labels.end());
-        int32_t label_count = static_cast<int32_t>(unique_labels.size());
+        std::set<int> unique_set(result_labels.begin(), result_labels.end());
+        *unique_label_count = static_cast<int32_t>(unique_set.size());
 
-        // Allocate result buffer
-        size_t header_size = 3 * sizeof(int32_t);
-        size_t labels_size = face_count * sizeof(int32_t);
-        size_t total_size = header_size + labels_size;
-
-        result = wasm_malloc(total_size);
-        if (!result) {
-            return create_error_result(SEGMAT_ERR_ALLOC);
-        }
-
-        // Write header
-        int32_t* header = static_cast<int32_t*>(result);
-        header[0] = SEGMAT_SUCCESS;
-        header[1] = face_count;
-        header[2] = label_count;
-
-        // Write labels
-        int32_t* out_labels = header + 3;
-        for (int32_t i = 0; i < face_count; i++) {
-            out_labels[i] = static_cast<int32_t>(labels[i]);
-        }
-
-        return result;
+        return SEGMAT_SUCCESS;
 
     } catch (const std::exception& e) {
-        if (result) wasm_free(result);
-        return create_error_result(SEGMAT_ERR_SEGMENT);
+        return SEGMAT_ERR_SEGMENT;
     } catch (...) {
-        if (result) wasm_free(result);
-        return create_error_result(SEGMAT_ERR_SEGMENT);
+        return SEGMAT_ERR_SEGMENT;
     }
-}
-
-// Accessor functions for result buffer
-int32_t segmat_result_error_code(void* result) {
-    if (!result) return SEGMAT_ERR_INVALID;
-    return static_cast<int32_t*>(result)[0];
-}
-
-int32_t segmat_result_face_count(void* result) {
-    if (!result) return 0;
-    return static_cast<int32_t*>(result)[1];
-}
-
-int32_t segmat_result_label_count(void* result) {
-    if (!result) return 0;
-    return static_cast<int32_t*>(result)[2];
-}
-
-const int32_t* segmat_result_labels(void* result) {
-    if (!result) return nullptr;
-    int32_t* header = static_cast<int32_t*>(result);
-    if (header[0] != SEGMAT_SUCCESS) return nullptr;
-    return header + 3;
 }
 
 } // extern "C"

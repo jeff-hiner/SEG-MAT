@@ -114,6 +114,7 @@ bool MAT::checkPatchConnect(Patch& pa1, Patch& pa2, int mode)
 		}
 		return false;
 	}
+	return false; // Invalid mode
 }
 bool MAT::checkMATTriangleConnect(Face& f1, Face& f2)
 {
@@ -814,6 +815,7 @@ double MAT::compute_face_slab_angle(Face& f1, Face& f2)
 			return 1.0f;
 		}
 	}
+	return 1.0f; // Mixed degenerate case
 }
 double MAT::compute_triangle_area(Face& f)
 {
@@ -1044,4 +1046,5 @@ int MAT::getLargestFaceIndexOfPatch(Patch& pa1)
 		if (faces[i] == max_face1)
 			return i;
 	}
+	return -1; // Not found
 }

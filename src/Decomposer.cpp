@@ -7,6 +7,44 @@ Mesh Decomposer::readMesh(string path) {
 	return mesh;
 }
 
+// Buffer-based mesh creation for WASM interface
+Mesh Decomposer::createMeshFromBuffers(
+	const float* vertices,
+	int32_t vertex_count,
+	const int32_t* faces_buf,
+	int32_t face_count)
+{
+	Mesh mesh;
+
+	// Add vertices
+	std::vector<Mesh::Vertex_index> vertex_indices;
+	vertex_indices.reserve(vertex_count);
+
+	for (int32_t i = 0; i < vertex_count; i++) {
+		double x = static_cast<double>(vertices[i * 3 + 0]);
+		double y = static_cast<double>(vertices[i * 3 + 1]);
+		double z = static_cast<double>(vertices[i * 3 + 2]);
+		Point p(x, y, z);
+		Mesh::Vertex_index vi = mesh.add_vertex(p);
+		vertex_indices.push_back(vi);
+	}
+
+	// Add faces
+	for (int32_t i = 0; i < face_count; i++) {
+		int32_t v0 = faces_buf[i * 3 + 0];
+		int32_t v1 = faces_buf[i * 3 + 1];
+		int32_t v2 = faces_buf[i * 3 + 2];
+
+		if (v0 >= 0 && v0 < vertex_count &&
+		    v1 >= 0 && v1 < vertex_count &&
+		    v2 >= 0 && v2 < vertex_count) {
+			mesh.add_face(vertex_indices[v0], vertex_indices[v1], vertex_indices[v2]);
+		}
+	}
+
+	return mesh;
+}
+
 void Decomposer::decompose3Dshape(MAT& mat, MAT& smat, Mesh& mesh, float growing_threshold, float min_region)
 {
 	//intialize mesh tree

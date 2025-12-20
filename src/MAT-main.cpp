@@ -1051,3 +1051,89 @@ void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& e
 	final_patch = coarse_patch;
 }
 
+// ============================================================================
+// Buffer-based constructor for WASM interface
+// ============================================================================
+MAT::MAT(const float* vertices,
+         const float* radii_buf,
+         int32_t vertex_count,
+         const int32_t* edges_buf,
+         int32_t edge_count,
+         const int32_t* faces_buf,
+         int32_t face_count,
+         Mesh& mesh)
+{
+	this->points.reserve(vertex_count);
+	this->radius.reserve(vertex_count);
+	this->faces.reserve(face_count);
+
+	double maxr = 0;
+	double xsum = 0, ysum = 0, zsum = 0;
+
+	// Load vertices
+	for (int32_t i = 0; i < vertex_count; i++) {
+		double x = static_cast<double>(vertices[i * 3 + 0]);
+		double y = static_cast<double>(vertices[i * 3 + 1]);
+		double z = static_cast<double>(vertices[i * 3 + 2]);
+		double r = static_cast<double>(radii_buf[i]);
+
+		Point p(x, y, z);
+		this->pointmap.insert(pair<Point, int>(p, this->points.size()));
+		this->points.push_back(p);
+		this->radius.push_back(r);
+
+		xsum += x;
+		ysum += y;
+		zsum += z;
+		if (r > maxr) maxr = r;
+	}
+
+	// Load edges
+	for (int32_t i = 0; i < edge_count; i++) {
+		int p1 = edges_buf[i * 2 + 0];
+		int p2 = edges_buf[i * 2 + 1];
+		Point pa = this->points[p1];
+		Point pb = this->points[p2];
+		Edge e(pa, pb);
+		this->edges.push_back(e);
+	}
+
+	// Load faces
+	for (int32_t i = 0; i < face_count; i++) {
+		int p1 = faces_buf[i * 3 + 0];
+		int p2 = faces_buf[i * 3 + 1];
+		int p3 = faces_buf[i * 3 + 2];
+		Point pa = this->points[p1];
+		Point pb = this->points[p2];
+		Point pc = this->points[p3];
+		Face f(pa, pb, pc);
+		this->faces.push_back(f);
+	}
+
+	// Find pure edges (edges not part of faces)
+	for (size_t i = 0; i < this->edges.size(); i++) {
+		Edge e = this->edges[i];
+		bool pure_edge = true;
+		for (size_t j = 0; j < this->faces.size(); j++) {
+			Face f = this->faces[j];
+			if (checkEdgeOnFace(e, f)) {
+				pure_edge = false;
+				break;
+			}
+		}
+		if (pure_edge) {
+			this->pedges.push_back(e);
+			Face f(e[0], e[1], e[0]);
+			this->faces.push_back(f);
+		}
+	}
+
+	this->max_radius = maxr;
+	vector<double> ce(3);
+	ce[0] = xsum / (double)this->points.size();
+	ce[1] = ysum / (double)this->points.size();
+	ce[2] = zsum / (double)this->points.size();
+	this->centroid = ce;
+	this->boundingbox = computeBoundingBox();
+}
+

@@ -2,14 +2,26 @@
 #include "common_include.h"
 #include "Patch.h"
 #include "graphcut\GCoptimization.h"
+#include <cstdint>
 
 class MAT
 {
 public:
 
-	//build 
+	//build
 	MAT() {};
 	MAT(string matfile, Mesh& mesh);
+
+	// Buffer-based constructor for WASM interface
+	MAT(const float* vertices,      // [vertex_count * 3] - x,y,z interleaved
+	    const float* radii,         // [vertex_count]
+	    int32_t vertex_count,
+	    const int32_t* edges,       // [edge_count * 2] - v0,v1 pairs
+	    int32_t edge_count,
+	    const int32_t* faces,       // [face_count * 3] - v0,v1,v2 triplets
+	    int32_t face_count,
+	    Mesh& mesh);
+
 	~MAT() {};
 
 	//data

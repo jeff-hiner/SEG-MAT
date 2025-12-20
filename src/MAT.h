@@ -9,8 +9,18 @@ class MAT
 public:
 
 	//build
-	MAT() {};
+	MAT() : meshTree(nullptr) {};
 	MAT(string matfile, Mesh& mesh);
+
+	// Safe radius lookup with bounds checking
+	// Returns 0.0 if point not found or index out of range
+	double safe_radius(const Point& p) const {
+		auto it = pointmap.find(p);
+		if (it == pointmap.end()) return 0.0;
+		int idx = it->second;
+		if (idx < 0 || idx >= static_cast<int>(radius.size())) return 0.0;
+		return radius[idx];
+	}
 
 	// Buffer-based constructor for WASM interface
 	MAT(const float* vertices,      // [vertex_count * 3] - x,y,z interleaved

@@ -8,8 +8,8 @@ public:
 	vector<Point> points;
 	vector<Face> faces;
 	map<double, int> feature_map;
-	feature_t* feature_value;
-	float* feature_weight;
+	feature_t* feature_value = nullptr;
+	float* feature_weight = nullptr;
 	bool valid = true;
 	int seednode = 0;
 	Point computeCentroid()

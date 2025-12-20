@@ -29,7 +29,7 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 			int min_mark_index = 0;
 			for (int k = 0; k < marks.size(); k++)
 			{
-				double now_dis = abs(marks[k] - radius[pointmap[p]]);
+				double now_dis = abs(marks[k] - safe_radius(p));
 				if (now_dis < min_mark_dis)
 				{
 					min_mark_dis = now_dis;
@@ -89,7 +89,7 @@ bool MAT::checkPatchConnect(Patch& pa1, Patch& pa2, int mode)
 			{
 				Point p2 = pa2.points[j];
 				double center_dis = pow(CGAL::squared_distance(p1, p2), 0.5f);
-				double radius_dis = radius[pointmap[p1]] + radius[pointmap[p2]];
+				double radius_dis = safe_radius(p1) + safe_radius(p2);
 				if (center_dis < radius_dis)
 					return true;
 
@@ -136,7 +136,7 @@ bool MAT::checkFaceCentroidContained(Face& f, vector<Face>& group)
 		for (int k = 0; k < 3; k++)
 		{
 			double dis = pow(CGAL::squared_distance(centerp, check_face[k]), 0.5);
-			if (dis < radius[pointmap[check_face[k]]])
+			if (dis < safe_radius(check_face[k]))
 			{
 				return true;
 			}
@@ -157,7 +157,7 @@ bool MAT::checkFacePointContained(Face& f, vector<Face>& group)
 			for (int k = 0; k < 3; k++)
 			{
 				double dis = pow(CGAL::squared_distance(fp, check_face[k]), 0.5);
-				if (dis < radius[pointmap[check_face[k]]])
+				if (dis < safe_radius(check_face[k]))
 				{
 					return true;
 				}
@@ -275,7 +275,7 @@ bool MAT::checkPatchVisibility(Patch& pa1, Patch& pa2, float visratio)
 		double r_step1 = rand() / double(RAND_MAX);
 
 		//random sampling inside the sphere
-		Point np1 = p1 + v1 * (radius[pointmap[p1]] * r_step1);
+		Point np1 = p1 + v1 * (safe_radius(p1) * r_step1);
 		for (int j = 0; j < pa2.points.size(); j += d_smp)
 		{
 			Point p2 = pa2.points[j];
@@ -284,7 +284,7 @@ bool MAT::checkPatchVisibility(Patch& pa1, Patch& pa2, float visratio)
 			v2 = v2 / pow(v2.squared_length(), 0.5f);
 			double r_step2 = rand() / double(RAND_MAX);
 
-			Point np2 = p2 + v2 *(radius[pointmap[p2]] * r_step2);
+			Point np2 = p2 + v2 *(safe_radius(p2) * r_step2);
 			Edge segment_query(np1, np2);
 			if (segment_query.is_degenerate())
 			{
@@ -445,9 +445,9 @@ double MAT::computeBoundingBox()
 double MAT::compute_face_mean_r(Face f)
 {
 	if (f.is_degenerate())
-		return (radius[pointmap[f[0]]] + radius[pointmap[f[1]]]) / 2.0f;
+		return (safe_radius(f[0]) + safe_radius(f[1])) / 2.0f;
 	else
-		return (radius[pointmap[f[0]]] + radius[pointmap[f[1]]] + radius[pointmap[f[2]]]) / 3.0f;
+		return (safe_radius(f[0]) + safe_radius(f[1]) + safe_radius(f[2])) / 3.0f;
 };
 double MAT::compute_group_mean_r(vector<Face> group)
 {
@@ -465,7 +465,7 @@ double MAT::compute_point_patch_distance(Point& p, Patch pa)
 	for (int i = 0; i < pa.points.size(); i++)
 	{
 		Point p2 = pa.points[i];
-		double dis = pow(CGAL::squared_distance(p, p2), 0.5) - radius[pointmap[p2]];
+		double dis = pow(CGAL::squared_distance(p, p2), 0.5) - safe_radius(p2);
 		if (dis < mindis)
 			mindis = dis;
 	}
@@ -548,14 +548,14 @@ double MAT::compute_face_radius_difference(Face& f1, Face& f2)
 {
 	double r1, r2;
 	if (f1.is_degenerate())
-		r1 = (radius[pointmap[f1[0]]] + radius[pointmap[f1[1]]]) / 2.0f;
+		r1 = (safe_radius(f1[0]) + safe_radius(f1[1])) / 2.0f;
 	else
-		r1 = (radius[pointmap[f1[0]]] + radius[pointmap[f1[1]]] + radius[pointmap[f1[2]]]) / 3.0f;
+		r1 = (safe_radius(f1[0]) + safe_radius(f1[1]) + safe_radius(f1[2])) / 3.0f;
 
 	if (f2.is_degenerate())
-		r2 = (radius[pointmap[f2[0]]] + radius[pointmap[f2[1]]]) / 2.0f;
+		r2 = (safe_radius(f2[0]) + safe_radius(f2[1])) / 2.0f;
 	else
-		r2 = (radius[pointmap[f2[0]]] + radius[pointmap[f2[1]]] + radius[pointmap[f2[2]]]) / 3.0f;
+		r2 = (safe_radius(f2[0]) + safe_radius(f2[1]) + safe_radius(f2[2])) / 3.0f;
 
 	double radius_dis = r1 > r2 ? r1 / r2 : r2 / r1;
 	return radius_dis - 1;
@@ -703,23 +703,23 @@ double MAT::compute_face_radius_gradient(Face& f1, Face& f2)
 	Point c1, c2;
 	if (f1.is_degenerate())
 	{
-		r1 = (radius[pointmap[f1[0]]] + radius[pointmap[f1[1]]]) / 2.0f;
+		r1 = (safe_radius(f1[0]) + safe_radius(f1[1])) / 2.0f;
 		c1 = CGAL::midpoint(f1[0], f1[1]);
 	}
 	else
 	{
-		r1 = (radius[pointmap[f1[0]]] + radius[pointmap[f1[1]]] + radius[pointmap[f1[2]]]) / 3.0f;
+		r1 = (safe_radius(f1[0]) + safe_radius(f1[1]) + safe_radius(f1[2])) / 3.0f;
 		c1 = CGAL::centroid(f1);
 	}
 	if (f2.is_degenerate())
 	{
-		r2 = (radius[pointmap[f2[0]]] + radius[pointmap[f2[1]]]) / 2.0f;
+		r2 = (safe_radius(f2[0]) + safe_radius(f2[1])) / 2.0f;
 		c2 = CGAL::midpoint(f2[0], f2[1]);
 	}
 	else
 	{
-		r2 = (radius[pointmap[f2[0]]] + radius[pointmap[f2[1]]] + radius[pointmap[f2[2]]]) / 3.0f;
-		c1 = CGAL::centroid(f2);
+		r2 = (safe_radius(f2[0]) + safe_radius(f2[1]) + safe_radius(f2[2])) / 3.0f;
+		c2 = CGAL::centroid(f2);
 	}
 
 	if (r1 > r2)
@@ -751,7 +751,7 @@ double MAT::compute_face_slab_angle(Face& f1, Face& f2)
 		if (f1[1] == f2[1])
 			pc = f1[1], p0 = f1[0], p1 = f2[0];
 
-		double rc = radius[pointmap[pc]], r0 = radius[pointmap[p0]], r1 = radius[pointmap[p1]];
+		double rc = safe_radius(pc), r0 = safe_radius(p0), r1 = safe_radius(p1);
 
 		Vector3 v0 = p0 - pc, v1 = p1 - pc;
 		double d0 = pow(v0.squared_length(), 0.5), d1 = pow(v1.squared_length(), 0.5);
@@ -785,13 +785,13 @@ double MAT::compute_face_slab_angle(Face& f1, Face& f2)
 		vector<Vector3> slabnormal1, slabnormal2;
 
 		vector<double> r1(3), r2(3);
-		r1[0] = radius[pointmap[f1[0]]];
-		r1[1] = radius[pointmap[f1[1]]];
-		r1[2] = radius[pointmap[f1[2]]];
+		r1[0] = safe_radius(f1[0]);
+		r1[1] = safe_radius(f1[1]);
+		r1[2] = safe_radius(f1[2]);
 
-		r2[0] = radius[pointmap[f2[0]]];
-		r2[1] = radius[pointmap[f2[1]]];
-		r2[2] = radius[pointmap[f2[2]]];
+		r2[0] = safe_radius(f2[0]);
+		r2[1] = safe_radius(f2[1]);
+		r2[2] = safe_radius(f2[2]);
 
 		vector<Face> slab1, slab2;
 		bool check1 = compute_slab(f1, normals[0], r1, slab1, slabnormal1);

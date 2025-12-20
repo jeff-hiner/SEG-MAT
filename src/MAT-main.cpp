@@ -227,8 +227,10 @@ bool MAT::StructureDecompose(float is_thin)
 				double maxr = 0;
 				for (int k = 0; k < subgroup.size(); k++)
 				{
-					maxr = radius[pointmap[subgroup[k][0]]] > maxr ? radius[pointmap[subgroup[k][0]]] : maxr;
-					maxr = radius[pointmap[subgroup[k][1]]] > maxr ? radius[pointmap[subgroup[k][1]]] : maxr;
+					double r0 = safe_radius(subgroup[k][0]);
+					double r1 = safe_radius(subgroup[k][1]);
+					maxr = r0 > maxr ? r0 : maxr;
+					maxr = r1 > maxr ? r1 : maxr;
 				}
 				double sumr = 0;
 				for (int j = 0; j < subgroup.size(); j++)
@@ -261,10 +263,12 @@ bool MAT::StructureDecompose(float is_thin)
 					double maxr = 0;
 					for (int k = 0; k < subgroup.size(); k++)
 					{
-						maxr = radius[pointmap[subgroup[k][0]]] > maxr ? radius[pointmap[subgroup[k][0]]] : maxr;
-						maxr = radius[pointmap[subgroup[k][1]]] > maxr ? radius[pointmap[subgroup[k][1]]] : maxr;
-						maxr = radius[pointmap[subgroup[k][2]]] > maxr ? radius[pointmap[subgroup[k][2]]] : maxr;
-
+						double r0 = safe_radius(subgroup[k][0]);
+						double r1 = safe_radius(subgroup[k][1]);
+						double r2 = safe_radius(subgroup[k][2]);
+						maxr = r0 > maxr ? r0 : maxr;
+						maxr = r1 > maxr ? r1 : maxr;
+						maxr = r2 > maxr ? r2 : maxr;
 					}
 
 					for (int j = 0; j < subgroup.size(); j++)
@@ -364,7 +368,7 @@ void MAT::densify(vector<Patch>& patches, MAT& mat, int interpolation)
 			Point p2 = f[1];
 			Point p3 = f[2];
 			Point nullp(0.0f, 0.0f, 0.0f);
-			double r1 = mat.radius[mat.pointmap[f[0]]], r2 = mat.radius[mat.pointmap[f[1]]], r3 = mat.radius[mat.pointmap[f[2]]];
+			double r1 = mat.safe_radius(f[0]), r2 = mat.safe_radius(f[1]), r3 = mat.safe_radius(f[2]);
 
 			if (f.is_degenerate())
 			{

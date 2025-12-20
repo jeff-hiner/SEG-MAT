@@ -253,7 +253,7 @@ void Decomposer::transfer_MAT_mesh(MAT& mat, Mesh& mesh, float weight)
 			{
 				Point nowp = mat.final_patch[i].points[j];
 				double nowdis = CGAL::squared_distance(cp, nowp);
-				nowdis = pow(nowdis, 0.5) - mat.radius[mat.pointmap[nowp]];
+				nowdis = pow(nowdis, 0.5) - mat.safe_radius(nowp);
 				if (nowdis < mindis)
 					mindis = nowdis;
 			}

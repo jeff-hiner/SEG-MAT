@@ -4,11 +4,12 @@
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/boost/graph/graph_traits_Surface_mesh.h>
 #include <CGAL/boost/graph/properties_Surface_mesh.h>
-#include <CGAL/Mean_curvature_flow_skeletonization.h>
+// Skeletonization removed - never used in SEG-MAT
+// #include <CGAL/Mean_curvature_flow_skeletonization.h>
 #include <CGAL/Triangulation_data_structure_3.h>
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
-#include <CGAL/AABB_triangle_primitive.h>
+#include <CGAL/AABB_face_graph_triangle_primitive.h>
 #include <CGAL/point_generators_3.h>
 #include <CGAL/Orthogonal_k_neighbor_search.h>
 #include <CGAL/Search_traits_3.h>
@@ -32,10 +33,11 @@ typedef Kernel::Ray_3                                         Ray;
 typedef Kernel::Vector_3									  Vector3;
 typedef CGAL::Surface_mesh<Point>                             Mesh;
 typedef boost::graph_traits<Mesh>::vertex_descriptor          vertex_descriptor;
-typedef CGAL::Mean_curvature_flow_skeletonization<Mesh>       Skeletonization;
-typedef Skeletonization::Skeleton                             Skeleton;
-typedef Skeleton::vertex_descriptor                           Skeleton_vertex;
-typedef Skeleton::edge_descriptor                             Skeleton_edge;
+// Skeletonization typedefs removed - never used in SEG-MAT
+// typedef CGAL::Mean_curvature_flow_skeletonization<Mesh>       Skeletonization;
+// typedef Skeletonization::Skeleton                             Skeleton;
+// typedef Skeleton::vertex_descriptor                           Skeleton_vertex;
+// typedef Skeleton::edge_descriptor                             Skeleton_edge;
 typedef Mesh::Vertex_index							          Vertexi;
 typedef Mesh::Face_index							          Facei;
 typedef CGAL::Triangulation_data_structure_3<>                Tds;

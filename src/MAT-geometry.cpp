@@ -4,6 +4,11 @@
 signature_t MAT::getPatchSignature(Patch p1)
 {
 	int pa1_item_num = p1.feature_map.size();
+	// Safety check for empty patches or unallocated arrays
+	if (pa1_item_num == 0 || p1.feature_value == nullptr || p1.feature_weight == nullptr) {
+		signature_t empty = { 0, nullptr, nullptr };
+		return empty;
+	}
 	feature_t* pa1_f = p1.feature_value;
 	float* weight1 = p1.feature_weight;
 	signature_t s1 = { pa1_item_num, pa1_f, weight1 };
@@ -11,6 +16,11 @@ signature_t MAT::getPatchSignature(Patch p1)
 }
 void MAT::setPatchEMD(int num, vector<Patch>& patches)
 {
+	// Safety check: if radius is empty, can't compute EMD features
+	if (radius.empty() || num <= 0) {
+		return;
+	}
+
 	vector<double> sort_r = radius;
 	vector<double> marks(num + 1, 0);
 	sort(sort_r.begin(), sort_r.end());
@@ -21,6 +31,14 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 
 	for (int i = 0; i < patches.size(); i++)
 	{
+		// Clear previous EMD data to avoid accumulation across iterations
+		patches[i].feature_map.clear();
+		patches[i].feature_value = nullptr;
+		patches[i].feature_weight = nullptr;
+
+		// Skip empty patches
+		if (patches[i].points.empty()) continue;
+
 		for (int j = 0; j < patches[i].points.size(); j++)
 		{
 			Point p = patches[i].points[j];
@@ -42,6 +60,9 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 	//set feature value
 	for (int i = 0; i < patches.size(); i++)
 	{
+		// Skip patches with no features
+		if (patches[i].feature_map.empty()) continue;
+
 		patches[i].feature_value = new feature_t[patches[i].feature_map.size()];
 		map<double, int>::iterator iter;
 		int count = 0;
@@ -50,6 +71,9 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 	}
 	for (int i = 0; i < patches.size(); i++)
 	{
+		// Skip patches with no features or empty points
+		if (patches[i].feature_map.empty() || patches[i].points.empty()) continue;
+
 		patches[i].feature_weight = new float[patches[i].feature_map.size()];
 		map<double, int>::iterator iter;
 		int count = 0;
@@ -60,10 +84,14 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 float MAT::getMaxEmd(vector<vector<float>> emd_values)
 {
 	float max_emd_value = 0;
-	for (int i = 0; i < dense_patch.size(); i++)
+	// Use emd_values.size() instead of dense_patch.size() for safety
+	int n = static_cast<int>(emd_values.size());
+	for (int i = 0; i < n; i++)
 	{
-		for (int j = i + 1; j < dense_patch.size(); j++)
+		if (i >= static_cast<int>(emd_values.size())) break;
+		for (int j = i + 1; j < n; j++)
 		{
+			if (j >= static_cast<int>(emd_values[i].size())) break;
 			float emdvalue = emd_values[i][j];
 
 			if (emdvalue > max_emd_value)

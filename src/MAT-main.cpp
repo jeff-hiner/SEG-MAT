@@ -987,7 +987,13 @@ void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& e
 		for (int j = 0; j < patchgraph[i].size(); j++)
 		{
 			int pindex = patchgraph[i][j];
+			// Bounds check for pindex
+			if (pindex < 0 || pindex >= static_cast<int>(dense_patch.size())) continue;
 			Patch pa2 = dense_patch[pindex];
+
+			// Bounds check for emd_values
+			if (i >= static_cast<int>(emd_values.size()) ||
+			    pindex >= static_cast<int>(emd_values[i].size())) continue;
 
 			//merge the part
 			if (emd_values[i][pindex] < merge_para * max_emd)
@@ -1018,15 +1024,19 @@ void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& e
 		{
 			int now = q.front();
 			//get final patches based on coarse patch or dense patch
-			dense_subgroup.push_back(dense_patch[now]);
-			coarse_subgroup.push_back(coarse_patch[now]);
+			if (now >= 0 && now < static_cast<int>(dense_patch.size())) {
+				dense_subgroup.push_back(dense_patch[now]);
+			}
+			if (now >= 0 && now < static_cast<int>(coarse_patch.size())) {
+				coarse_subgroup.push_back(coarse_patch[now]);
+			}
 			for (int j = 0; j < patchgraph[now].size(); j++)
 			{
-
-				if (visit[patchgraph[now][j]] == 0)
+				int next_idx = patchgraph[now][j];
+				if (next_idx >= 0 && next_idx < graphsize && visit[next_idx] == 0)
 				{
-					q.push(patchgraph[now][j]);
-					visit[patchgraph[now][j]] = 1;
+					q.push(next_idx);
+					visit[next_idx] = 1;
 				}
 			}
 			q.pop();

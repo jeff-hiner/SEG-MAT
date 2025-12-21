@@ -88,11 +88,7 @@ int32_t segmat_segment(
     }
 
     try {
-        // DEBUG: Return checkpoint codes to identify crash location
-        // -100 = after mesh creation, -101 = after smat, -102 = after mat, etc.
-
         // Create mesh from buffers
-        // Note: Decomposer::createMeshFromBuffers expects vertex count, not float count
         Mesh cgal_mesh = Decomposer::createMeshFromBuffers(
             mesh->vertices.ptr,
             static_cast<int>(mesh_vertex_count),
@@ -132,7 +128,7 @@ int32_t segmat_segment(
             return SEGMAT_ERR_INVALID_SIZE;
         }
 
-        // Perform segmentation - this calls cout which needs WASI
+        // Perform segmentation
         Decomposer solver;
         solver.decompose3Dshape(mat, smat, cgal_mesh, params->growing_threshold, params->min_region);
         solver.transfer_MAT_mesh(mat, cgal_mesh, 0.3f);

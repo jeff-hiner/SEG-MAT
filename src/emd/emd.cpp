@@ -102,6 +102,16 @@ float emd(signature_t *Signature1, signature_t *Signature2,
 	float(*Dist)(feature_t *, feature_t *),
 	flow_t *Flow, int *FlowSize)
 {
+	// Guard against empty or invalid signatures - russel() crashes when n=0
+	if (Signature1 == NULL || Signature2 == NULL ||
+	    Signature1->n <= 0 || Signature2->n <= 0 ||
+	    Signature1->Features == NULL || Signature1->Weights == NULL ||
+	    Signature2->Features == NULL || Signature2->Weights == NULL) {
+		if (Flow != NULL && FlowSize != NULL)
+			*FlowSize = 0;
+		return 0.0f;
+	}
+
 	int itr;
 	double totalCost;
 	float w;

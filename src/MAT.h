@@ -83,6 +83,7 @@ public:
 	void MergeTinyPatches();
 	void MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& emd_values, float max_emd, float merge_para);
 	void MergeIterations(bool use_vis = true);
+	vector<vector<float>> buildEmdGraph_afterSetPatch(vector<Patch>& patches, vector<vector<int>>& patchgraph);
 
 
 private:

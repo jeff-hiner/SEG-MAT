@@ -299,7 +299,12 @@ bool MAT::checkPatchVisibility(Patch& pa1, Patch& pa2, float visratio)
 		Point p1 = pa1.points[i];
 
 		Vector3 v1(rand() / double(RAND_MAX), rand() / double(RAND_MAX), rand() / double(RAND_MAX));
-		v1 = v1 / pow(v1.squared_length(), 0.5f);
+		double v1_len_sq = v1.squared_length();
+		if (v1_len_sq < 1e-10) {
+			count++;  // Skip this sample - degenerate random vector
+			continue;
+		}
+		v1 = v1 / sqrt(v1_len_sq);
 		double r_step1 = rand() / double(RAND_MAX);
 
 		//random sampling inside the sphere
@@ -309,10 +314,15 @@ bool MAT::checkPatchVisibility(Patch& pa1, Patch& pa2, float visratio)
 			Point p2 = pa2.points[j];
 
 			Vector3 v2(rand() / double(RAND_MAX), rand() / double(RAND_MAX), rand() / double(RAND_MAX));
-			v2 = v2 / pow(v2.squared_length(), 0.5f);
+			double v2_len_sq = v2.squared_length();
+			if (v2_len_sq < 1e-10) {
+				count++;  // Skip this sample - degenerate random vector
+				continue;
+			}
+			v2 = v2 / sqrt(v2_len_sq);
 			double r_step2 = rand() / double(RAND_MAX);
 
-			Point np2 = p2 + v2 *(safe_radius(p2) * r_step2);
+			Point np2 = p2 + v2 * (safe_radius(p2) * r_step2);
 			Edge segment_query(np1, np2);
 			if (segment_query.is_degenerate())
 			{
@@ -325,9 +335,9 @@ bool MAT::checkPatchVisibility(Patch& pa1, Patch& pa2, float visratio)
 				if (!meshTree->do_intersect(segment_query))
 					count++;
 			}
-			catch (exception e)
+			catch (exception& e)
 			{
-				// cout << "CGAL error when checking visibility" << endl;
+				// CGAL error when checking visibility - skip
 			}
 			if (count > valid_count)
 			{

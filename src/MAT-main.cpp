@@ -742,10 +742,20 @@ vector<vector<float>> MAT::buildEmdGraph(vector<vector<int>>& patchgraph)
 		Patch pa1 = dense_patch[i];
 		signature_t s1 = getPatchSignature(pa1);
 
+		// Skip if signature is invalid
+		if (s1.n <= 0 || s1.Features == nullptr || s1.Weights == nullptr) continue;
+
 		for (int j = 1; j < patches_num; j++)
 		{
 			Patch pa2 = dense_patch[j];
 			signature_t s2 = getPatchSignature(pa2);
+
+			// Skip if signature is invalid
+			if (s2.n <= 0 || s2.Features == nullptr || s2.Weights == nullptr) {
+				emd_values[i][j] = 0.0f;
+				continue;
+			}
+
 			float emdvalue = emd(&s1, &s2, dist, 0, 0);
 			emd_values[i][j] = emdvalue;
 		}
@@ -831,6 +841,14 @@ void MAT::MergeTinyPatches() {
 
 			signature_t pt1 = getPatchSignature(tp);
 			signature_t pt2 = getPatchSignature(dp);
+
+			// Skip if either signature is invalid
+			if (pt1.n <= 0 || pt1.Features == nullptr || pt1.Weights == nullptr ||
+			    pt2.n <= 0 || pt2.Features == nullptr || pt2.Weights == nullptr) {
+				emddis_list[j] = 0.0f;
+				continue;
+			}
+
 			float emddis = emd(&pt1, &pt2, dist, 0, 0);
 
 			emddis_list[j] = emddis;
@@ -884,6 +902,49 @@ void MAT::MergeTinyPatches() {
 		}
 	}
 }
+// Version of buildEmdGraph for merged patches - must reinitialize EMD features
+// because MergePatches creates NEW Patch objects with nullptr feature arrays
+vector<vector<float>> MAT::buildEmdGraph_afterSetPatch(vector<Patch>& patches, vector<vector<int>>& patchgraph)
+{
+	// Safety: ensure we have radius data
+	if (radius.empty()) {
+		return vector<vector<float>>(200, vector<float>(200, 0.0f));
+	}
+
+	setPatchEMD(20, patches);  // REQUIRED: merged patches need feature arrays initialized
+	int patches_num = static_cast<int>(patches.size());
+
+	// Bounds check: don't exceed 200x200 matrix
+	if (patches_num > 200) patches_num = 200;
+
+	vector<vector<float>> emd_values(200, vector<float>(200, 0.0f));
+
+	for (int i = 0; i < patches_num; i++)
+	{
+		Patch& pa1 = patches[i];  // Use reference to avoid copy
+		signature_t s1 = getPatchSignature(pa1);
+
+		// Skip if signature is invalid
+		if (s1.n <= 0 || s1.Features == nullptr || s1.Weights == nullptr) continue;
+
+		for (int j = 1; j < patches_num; j++)
+		{
+			Patch& pa2 = patches[j];  // Use reference
+			signature_t s2 = getPatchSignature(pa2);
+
+			// Skip if signature is invalid
+			if (s2.n <= 0 || s2.Features == nullptr || s2.Weights == nullptr) {
+				emd_values[i][j] = 0.0f;
+				continue;
+			}
+
+			float emdvalue = emd(&s1, &s2, dist, 0, 0);
+			emd_values[i][j] = emdvalue;
+		}
+	}
+	return emd_values;
+}
+
 void MAT::MergeIterations(bool use_vis)
 {
 	//merging steps
@@ -919,7 +980,6 @@ void MAT::MergeIterations(bool use_vis)
 		}
 	}
 
-
 	vector<vector<float>> emdvalues = buildEmdGraph(patchgraph);
 	float maxemd = getMaxEmd(emdvalues);
 	MergePatches(patchgraph, emdvalues, maxemd, emd1);
@@ -947,7 +1007,9 @@ void MAT::MergeIterations(bool use_vis)
 		}
 	}
 
-	emdvalues = buildEmdGraph(patchgraph);
+	// Use buildEmdGraph_afterSetPatch for iterations 2 and 3 - merged patches
+	// need their EMD features reinitialized since MergePatches creates new Patch objects
+	emdvalues = buildEmdGraph_afterSetPatch(dense_patch, patchgraph);
 	MergePatches(patchgraph, emdvalues, maxemd, emd2);
 
 	if (use_vis)
@@ -972,9 +1034,9 @@ void MAT::MergeIterations(bool use_vis)
 			}
 		}
 	}
-	emdvalues = buildEmdGraph(patchgraph);
-	MergePatches(patchgraph, emdvalues, maxemd, emd3);
 
+	emdvalues = buildEmdGraph_afterSetPatch(dense_patch, patchgraph);
+	MergePatches(patchgraph, emdvalues, maxemd, emd3);
 }
 void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& emd_values, float max_emd, float merge_para)
 {

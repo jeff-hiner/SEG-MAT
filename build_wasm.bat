@@ -15,7 +15,6 @@ em++ -O2 -std=c++14 -s WASM=1 ^
     -s EXPORTED_RUNTIME_METHODS="['ccall','cwrap']" ^
     -s ALLOW_MEMORY_GROWTH=0 ^
     -s INITIAL_MEMORY=134217728 ^
-    -s MAXIMUM_MEMORY=1073741824 ^
     -I src ^
     -I src/emd ^
     -I src/graphcut ^

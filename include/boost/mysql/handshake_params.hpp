@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,10 +18,16 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Parameters defining how to perform the handshake with a MySQL server.
+ * \brief (Legacy) Parameters defining how to perform the handshake with a MySQL server.
+ *
  * \par Object lifetimes
  * This object stores references to strings (like username and password), performing
- * no copy of these values. Users are resposible for keeping them alive until required.
+ * no copy of these values. Users are responsible for keeping them alive until required.
+ *
+ * \par Legacy
+ * This class is used with the legacy \ref connection class.
+ * New code should use \ref any_connection, instead.
+ * The equivalent to `handshake_params` is \ref connect_params.
  */
 class handshake_params
 {
@@ -30,10 +36,11 @@ class handshake_params
     string_view database_;
     std::uint16_t connection_collation_;
     ssl_mode ssl_;
+    bool multi_queries_;
 
 public:
     /// The default collation to use with the connection (`utf8mb4_general_ci` on both MySQL and MariaDB).
-    static constexpr std::uint16_t default_collation = 45;
+    static BOOST_INLINE_CONSTEXPR std::uint16_t default_collation = 45;
 
     /**
      * \brief Initializing constructor.
@@ -48,19 +55,23 @@ public:
      * `utf8mb4_general_ci` (see \ref default_collation), which is compatible with MySQL 5.x, 8.x and MariaDB.
      * \param mode The \ref ssl_mode to use with this connection; ignored if
      * the connection's `Stream` does not support SSL.
+     * \param multi_queries Whether to enable support for executing semicolon-separated
+     * queries using \ref connection::execute and \ref connection::start_execution. Disabled by default.
      */
     handshake_params(
         string_view username,
         string_view password,
         string_view db = "",
         std::uint16_t connection_col = default_collation,
-        ssl_mode mode = ssl_mode::require
+        ssl_mode mode = ssl_mode::require,
+        bool multi_queries = false
     )
         : username_(username),
           password_(password),
           database_(db),
           connection_collation_(connection_col),
-          ssl_(mode)
+          ssl_(mode),
+          multi_queries_(multi_queries)
     {
     }
 
@@ -133,6 +144,20 @@ public:
      * No-throw guarantee.
      */
     void set_ssl(ssl_mode value) noexcept { ssl_ = value; }
+
+    /**
+     * \brief Retrieves whether multi-query support is enabled.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    bool multi_queries() const noexcept { return multi_queries_; }
+
+    /**
+     * \brief Enables or disables support for the multi-query feature.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    void set_multi_queries(bool v) noexcept { multi_queries_ = v; }
 };
 
 }  // namespace mysql

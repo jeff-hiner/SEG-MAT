@@ -3,8 +3,9 @@
 // Copyright (c) 2007-2014 Barend Gehrels, Amsterdam, the Netherlands.
 // Copyright (c) 2017 Adam Wulkiewicz, Lodz, Poland.
 
-// This file was modified by Oracle on 2014-2022.
-// Modifications copyright (c) 2014-2022 Oracle and/or its affiliates.
+// This file was modified by Oracle on 2014-2024.
+// Modifications copyright (c) 2014-2024 Oracle and/or its affiliates.
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
@@ -27,6 +28,7 @@
 #include <boost/geometry/algorithms/detail/covered_by/implementation.hpp>
 #include <boost/geometry/algorithms/detail/overlay/append_no_duplicates.hpp>
 #include <boost/geometry/algorithms/detail/overlay/copy_segments.hpp>
+#include <boost/geometry/algorithms/detail/overlay/debug_traverse.hpp>
 #include <boost/geometry/algorithms/detail/overlay/turn_info.hpp>
 #include <boost/geometry/algorithms/detail/point_on_border.hpp>
 #include <boost/geometry/algorithms/detail/relate/turns.hpp>
@@ -163,7 +165,7 @@ inline bool is_touching(Turn const& turn, Operation const& op,
 template
 <
     typename GeometryOut,
-    typename Tag = typename geometry::tag<GeometryOut>::type
+    typename Tag = geometry::tag_t<GeometryOut>
 >
 struct add_isolated_point
 {};
@@ -220,8 +222,7 @@ struct action_selector<overlay_intersection, RemoveSpikes>
         typename LineString,
         typename Point,
         typename Operation,
-        typename Strategy,
-        typename RobustPolicy
+        typename Strategy
     >
     static inline void enter(LineStringOut& current_piece,
                 LineString const& ,
@@ -229,7 +230,6 @@ struct action_selector<overlay_intersection, RemoveSpikes>
                 signed_size_type , Point const& point,
                 Operation const& operation,
                 Strategy const& strategy,
-                RobustPolicy const& ,
                 OutputIterator& )
     {
         // On enter, append the intersection point and remember starting point
@@ -245,8 +245,7 @@ struct action_selector<overlay_intersection, RemoveSpikes>
         typename LineString,
         typename Point,
         typename Operation,
-        typename Strategy,
-        typename RobustPolicy
+        typename Strategy
     >
     static inline void leave(LineStringOut& current_piece,
                 LineString const& linestring,
@@ -254,7 +253,6 @@ struct action_selector<overlay_intersection, RemoveSpikes>
                 signed_size_type index, Point const& point,
                 Operation const& ,
                 Strategy const& strategy,
-                RobustPolicy const& robust_policy,
                 OutputIterator& out)
     {
         // On leave, copy all segments from starting point, append the intersection point
@@ -262,7 +260,7 @@ struct action_selector<overlay_intersection, RemoveSpikes>
         detail::copy_segments::copy_segments_linestring
             <
                 false, RemoveSpikes
-            >::apply(linestring, segment_id, index, strategy, robust_policy, current_piece);
+            >::apply(linestring, segment_id, index, strategy, current_piece);
         detail::overlay::append_no_duplicates(current_piece, point, strategy);
         if (::boost::size(current_piece) > 1)
         {
@@ -300,7 +298,7 @@ struct action_selector<overlay_intersection, RemoveSpikes>
 template <bool RemoveSpikes>
 struct action_selector<overlay_difference, RemoveSpikes>
 {
-    typedef action_selector<overlay_intersection, RemoveSpikes> normal_action;
+    using normal_action = action_selector<overlay_intersection, RemoveSpikes>;
 
     template
     <
@@ -309,8 +307,7 @@ struct action_selector<overlay_difference, RemoveSpikes>
         typename LineString,
         typename Point,
         typename Operation,
-        typename Strategy,
-        typename RobustPolicy
+        typename Strategy
     >
     static inline void enter(LineStringOut& current_piece,
                 LineString const& linestring,
@@ -318,11 +315,10 @@ struct action_selector<overlay_difference, RemoveSpikes>
                 signed_size_type index, Point const& point,
                 Operation const& operation,
                 Strategy const& strategy,
-                RobustPolicy const& robust_policy,
                 OutputIterator& out)
     {
         normal_action::leave(current_piece, linestring, segment_id, index,
-                    point, operation, strategy, robust_policy, out);
+                    point, operation, strategy, out);
     }
 
     template
@@ -332,8 +328,7 @@ struct action_selector<overlay_difference, RemoveSpikes>
         typename LineString,
         typename Point,
         typename Operation,
-        typename Strategy,
-        typename RobustPolicy
+        typename Strategy
     >
     static inline void leave(LineStringOut& current_piece,
                 LineString const& linestring,
@@ -341,11 +336,10 @@ struct action_selector<overlay_difference, RemoveSpikes>
                 signed_size_type index, Point const& point,
                 Operation const& operation,
                 Strategy const& strategy,
-                RobustPolicy const& robust_policy,
                 OutputIterator& out)
     {
         normal_action::enter(current_piece, linestring, segment_id, index,
-                    point, operation, strategy, robust_policy, out);
+                    point, operation, strategy, out);
     }
 
     template
@@ -389,14 +383,14 @@ template
 >
 class follow
 {
-    typedef geometry::detail::output_geometry_access
+    using linear = geometry::detail::output_geometry_access
         <
             GeometryOut, linestring_tag, linestring_tag
-        > linear;
-    typedef geometry::detail::output_geometry_access
+        >;
+    using pointlike = geometry::detail::output_geometry_access
         <
             GeometryOut, point_tag, linestring_tag
-        > pointlike;
+        >;
 
 public :
 
@@ -412,34 +406,25 @@ public :
     <
         typename Turns,
         typename OutputIterator,
-        typename RobustPolicy,
         typename Strategy
     >
     static inline OutputIterator apply(LineString const& linestring, Polygon const& polygon,
                 detail::overlay::operation_type ,  // TODO: this parameter might be redundant
                 Turns& turns,
-                RobustPolicy const& robust_policy,
                 OutputIterator out,
                 Strategy const& strategy)
     {
-        typedef typename boost::range_iterator<Turns>::type turn_iterator;
-        typedef typename boost::range_value<Turns>::type turn_type;
-        typedef typename boost::range_iterator
-            <
-                typename turn_type::container_type
-            >::type turn_operation_iterator_type;
-
-        typedef following::action_selector<OverlayType, RemoveSpikes> action;
+        using action = following::action_selector<OverlayType, RemoveSpikes>;
 
         // Sort intersection points on segments-along-linestring, and distance
         // (like in enrich is done for poly/poly)
         // sort turns by Linear seg_id, then by fraction, then
         // for same ring id: x, u, i, c
         // for different ring id: c, i, u, x
-        typedef relate::turns::less
+        using turn_less = relate::turns::less
             <
                 0, relate::turns::less_op_linear_areal_single<0>, Strategy
-            > turn_less;
+            >;
         std::sort(boost::begin(turns), boost::end(turns), turn_less());
 
         typename linear::type current_piece;
@@ -448,51 +433,51 @@ public :
         // Iterate through all intersection points (they are ordered along the line)
         bool entered = false;
         bool first = true;
-        for (turn_iterator it = boost::begin(turns); it != boost::end(turns); ++it)
+        for (auto const& turn : turns)
         {
-            turn_operation_iterator_type iit = boost::begin(it->operations);
+            auto const& op = turn.operations[0];
 
-            if (following::was_entered(*it, *iit, first, linestring, polygon, strategy))
+            if (following::was_entered(turn, op, first, linestring, polygon, strategy))
             {
-                debug_traverse(*it, *iit, "-> Was entered");
+                debug_traverse(turn, op, "-> Was entered");
                 entered = true;
             }
 
-            if (following::is_staying_inside(*it, *iit, entered, first, linestring, polygon, strategy))
+            if (following::is_staying_inside(turn, op, entered, first, linestring, polygon, strategy))
             {
-                debug_traverse(*it, *iit, "-> Staying inside");
+                debug_traverse(turn, op, "-> Staying inside");
 
                 entered = true;
             }
-            else if (following::is_entering(*it, *iit))
+            else if (following::is_entering(turn, op))
             {
-                debug_traverse(*it, *iit, "-> Entering");
+                debug_traverse(turn, op, "-> Entering");
 
                 entered = true;
                 action::enter(current_piece, linestring, current_segment_id,
-                    iit->seg_id.segment_index, it->point, *iit,
-                    strategy, robust_policy,
+                    op.seg_id.segment_index, turn.point, op,
+                    strategy,
                     linear::get(out));
             }
-            else if (following::is_leaving(*it, *iit, entered, first, linestring, polygon, strategy))
+            else if (following::is_leaving(turn, op, entered, first, linestring, polygon, strategy))
             {
-                debug_traverse(*it, *iit, "-> Leaving");
+                debug_traverse(turn, op, "-> Leaving");
 
                 entered = false;
                 action::leave(current_piece, linestring, current_segment_id,
-                    iit->seg_id.segment_index, it->point, *iit,
-                    strategy, robust_policy,
+                    op.seg_id.segment_index, turn.point, op,
+                    strategy,
                     linear::get(out));
             }
             else if (BOOST_GEOMETRY_CONDITION(FollowIsolatedPoints)
-                  && following::is_touching(*it, *iit, entered))
+                  && following::is_touching(turn, op, entered))
             {
-                debug_traverse(*it, *iit, "-> Isolated point");
+                debug_traverse(turn, op, "-> Isolated point");
 
                 action::template isolated_point
                     <
                         typename pointlike::type
-                    >(it->point, pointlike::get(out));
+                    >(turn.point, pointlike::get(out));
             }
 
             first = false;
@@ -506,7 +491,7 @@ public :
                 >::apply(linestring,
                          current_segment_id,
                          static_cast<signed_size_type>(boost::size(linestring) - 1),
-                         strategy, robust_policy,
+                         strategy,
                          current_piece);
         }
 

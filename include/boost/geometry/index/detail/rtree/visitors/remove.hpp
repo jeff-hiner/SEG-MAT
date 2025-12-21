@@ -4,8 +4,9 @@
 //
 // Copyright (c) 2011-2017 Adam Wulkiewicz, Lodz, Poland.
 //
-// This file was modified by Oracle on 2019-2021.
-// Modifications copyright (c) 2019-2021 Oracle and/or its affiliates.
+// This file was modified by Oracle on 2019-2023.
+// Modifications copyright (c) 2019-2023 Oracle and/or its affiliates.
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 //
 // Use, modification and distribution is subject to the Boost Software License,
@@ -17,9 +18,13 @@
 
 #include <boost/geometry/algorithms/detail/covered_by/interface.hpp>
 
+#include <boost/geometry/index/parameters.hpp>
+#include <boost/geometry/index/detail/algorithms/bounds.hpp>
+#include <boost/geometry/index/detail/rtree/node/node.hpp>
 #include <boost/geometry/index/detail/rtree/node/node_elements.hpp>
 #include <boost/geometry/index/detail/rtree/node/subtree_destroyer.hpp>
 #include <boost/geometry/index/detail/rtree/visitors/destroy.hpp>
+#include <boost/geometry/index/detail/rtree/visitors/insert.hpp>
 #include <boost/geometry/index/detail/rtree/visitors/is_leaf.hpp>
 
 namespace boost { namespace geometry { namespace index {
@@ -157,7 +162,7 @@ public:
     {
         typedef typename rtree::elements_type<leaf>::type elements_type;
         elements_type & elements = rtree::elements(n);
-        
+
         // find value and remove it
         for ( typename elements_type::iterator it = elements.begin() ; it != elements.end() ; ++it )
         {
@@ -197,7 +202,7 @@ private:
 
     typedef std::vector< std::pair<size_type, node_pointer> > underflow_nodes;
 
-    void traverse_apply_visitor(internal_node &n, internal_size_type choosen_node_index)
+    void traverse_apply_visitor(internal_node &n, internal_size_type chosen_node_index)
     {
         // save previous traverse inputs and set new ones
         internal_node_pointer parent_bckup = m_parent;
@@ -205,11 +210,11 @@ private:
         size_type current_level_bckup = m_current_level;
 
         m_parent = &n;
-        m_current_child_index = choosen_node_index;
+        m_current_child_index = chosen_node_index;
         ++m_current_level;
 
         // next traversing step
-        rtree::apply_visitor(*this, *rtree::elements(n)[choosen_node_index].second);                    // MAY THROW (V, E: alloc, copy, N: alloc)
+        rtree::apply_visitor(*this, *rtree::elements(n)[chosen_node_index].second);                    // MAY THROW (V, E: alloc, copy, N: alloc)
 
         // restore previous traverse inputs
         m_parent = parent_bckup;

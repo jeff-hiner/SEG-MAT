@@ -29,8 +29,6 @@
 #include <boost/variant/static_visitor.hpp>
 #include <boost/variant/variant_fwd.hpp>
 
-#include <boost/geometry/algorithms/detail/interior_iterator.hpp>
-
 #include <boost/geometry/core/exterior_ring.hpp>
 #include <boost/geometry/core/interior_rings.hpp>
 #include <boost/geometry/core/ring_type.hpp>
@@ -73,7 +71,7 @@ struct svg_box
         // Prevent invisible boxes, making them >=1, using "max"
         BOOST_USING_STD_MAX();
 
-        typedef typename coordinate_type<Box>::type ct;
+        using ct = coordinate_type_t<Box>;
         ct x = geometry::get<geometry::min_corner, 0>(box);
         ct y = geometry::get<geometry::min_corner, 1>(box);
         ct width = max BOOST_PREVENT_MACRO_SUBSTITUTION (ct(1),
@@ -94,12 +92,12 @@ struct svg_segment
     static inline void apply(std::basic_ostream<Char, Traits>& os,
         Segment const& segment, std::string const& style, double)
     {
-        typedef typename coordinate_type<Segment>::type ct;
-        ct x1 = geometry::get<0, 0>(segment);
-        ct y1 = geometry::get<0, 1>(segment);
-        ct x2 = geometry::get<1, 0>(segment);
-        ct y2 = geometry::get<1, 1>(segment);
-        
+        using ct = coordinate_type_t<Segment>;
+        ct const x1 = geometry::get<0, 0>(segment);
+        ct const y1 = geometry::get<0, 1>(segment);
+        ct const x2 = geometry::get<1, 0>(segment);
+        ct const y2 = geometry::get<1, 1>(segment);
+
         os << "<line x1=\"" << x1 << "\" y1=\"" << y1
             << "\" x2=\"" << x2 << "\" y2=\"" << y2
             << "\" style=\"" << style << "\"/>";
@@ -117,15 +115,11 @@ struct svg_range
     static inline void apply(std::basic_ostream<Char, Traits>& os,
         Range const& range, std::string const& style, double)
     {
-        typedef typename boost::range_iterator<Range const>::type iterator;
-
         bool first = true;
 
         os << "<" << Policy::prefix() << " points=\"";
 
-        for (iterator it = boost::begin(range);
-            it != boost::end(range);
-            ++it, first = false)
+        for (auto it = boost::begin(range); it != boost::end(range); ++it, first = false)
         {
             os << (first ? "" : " " )
                 << geometry::get<0>(*it)
@@ -145,16 +139,11 @@ struct svg_poly
     static inline void apply(std::basic_ostream<Char, Traits>& os,
         Polygon const& polygon, std::string const& style, double)
     {
-        typedef typename geometry::ring_type<Polygon>::type ring_type;
-        typedef typename boost::range_iterator<ring_type const>::type iterator_type;
-
         bool first = true;
         os << "<g fill-rule=\"evenodd\"><path d=\"";
 
-        ring_type const& ring = geometry::exterior_ring(polygon);
-        for (iterator_type it = boost::begin(ring);
-            it != boost::end(ring);
-            ++it, first = false)
+        auto const& ring = geometry::exterior_ring(polygon);
+        for (auto it = boost::begin(ring); it != boost::end(ring); ++it, first = false)
         {
             os << (first ? "M" : " L") << " "
                 << geometry::get<0>(*it)
@@ -164,15 +153,11 @@ struct svg_poly
 
         // Inner rings:
         {
-            typename interior_return_type<Polygon const>::type
-                rings = interior_rings(polygon);
-            for (typename detail::interior_iterator<Polygon const>::type
-                    rit = boost::begin(rings); rit != boost::end(rings); ++rit)
+            auto const& rings = interior_rings(polygon);
+            for (auto rit = boost::begin(rings); rit != boost::end(rings); ++rit)
             {
                 first = true;
-                for (typename detail::interior_ring_iterator<Polygon const>::type
-                        it = boost::begin(*rit); it != boost::end(*rit);
-                    ++it, first = false)
+                for (auto it = boost::begin(*rit); it != boost::end(*rit); ++it, first = false)
                 {
                     os << (first ? "M" : " L") << " "
                         << geometry::get<0>(*it)
@@ -209,14 +194,10 @@ struct svg_multi
     static inline void apply(std::basic_ostream<Char, Traits>& os,
         MultiGeometry const& multi, std::string const& style, double size)
     {
-        for (typename boost::range_iterator<MultiGeometry const>::type
-                    it = boost::begin(multi);
-            it != boost::end(multi);
-            ++it)
+        for (auto it = boost::begin(multi); it != boost::end(multi); ++it)
         {
             Policy::apply(os, *it, style, size);
         }
-
     }
 
 };
@@ -238,7 +219,7 @@ The static method should have the signature:
 template <typename Char, typename Traits>
 static inline void apply(std::basic_ostream<Char, Traits>& os, G const& geometry)
 */
-template <typename Geometry, typename Tag = typename tag<Geometry>::type>
+template <typename Geometry, typename Tag = tag_t<Geometry>>
 struct svg
 {
     BOOST_GEOMETRY_STATIC_ASSERT_FALSE(

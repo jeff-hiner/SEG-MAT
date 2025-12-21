@@ -1,6 +1,7 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
 
 // Copyright (c) 2008-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2023 Adam Wulkiewicz, Lodz, Poland.
 
 // This file was modified by Oracle on 2017-2020.
 // Modifications copyright (c) 2017-2020, Oracle and/or its affiliates.
@@ -14,10 +15,11 @@
 #define BOOST_GEOMETRY_SRS_PROJECTION_HPP
 
 
+#include <memory>
 #include <string>
 #include <type_traits>
 
-#include <boost/smart_ptr/shared_ptr.hpp>
+#include <boost/range/size.hpp>
 #include <boost/throw_exception.hpp>
 
 #include <boost/geometry/algorithms/convert.hpp>
@@ -41,7 +43,7 @@
 
 namespace boost { namespace geometry
 {
-    
+
 namespace projections
 {
 
@@ -51,11 +53,7 @@ namespace detail
 
 template <typename G1, typename G2>
 struct same_tags
-    : std::is_same
-        <
-            typename geometry::tag<G1>::type,
-            typename geometry::tag<G2>::type
-        >
+    : std::is_same<geometry::tag_t<G1>, geometry::tag_t<G2>>
 {};
 
 template <typename CT>
@@ -159,11 +157,8 @@ struct project_range
     template <typename R1, typename R2, typename Proj>
     static inline bool apply(R1 const& r1, R2 & r2, Proj const& proj)
     {
-        return geometry::detail::conversion::range_to_range
-            <
-                R1, R2,
-                geometry::point_order<R1>::value != geometry::point_order<R2>::value
-            >::apply(r1, r2, convert_policy<Proj>(proj)).result();
+        return geometry::detail::conversion::range_to_range::apply(r1, r2,
+            convert_policy<Proj>(proj)).result();
     }
 };
 
@@ -199,7 +194,7 @@ template
 <
     typename Geometry,
     typename PointPolicy,
-    typename Tag = typename geometry::tag<Geometry>::type
+    typename Tag = geometry::tag_t<Geometry>
 >
 struct project_geometry
 {};
@@ -378,7 +373,7 @@ private:
         return result;
     }
 
-    boost::shared_ptr<vprj_t> m_ptr;
+    std::shared_ptr<vprj_t> m_ptr;
 };
 
 template <typename StaticParameters, typename CT>
@@ -392,7 +387,7 @@ class static_proj_wrapper_base
         <
             StaticParameters
         >::type proj_tag;
-    
+
     typedef typename projections::detail::static_projection_type
         <
             proj_tag,
@@ -498,7 +493,7 @@ public:
 namespace srs
 {
 
-    
+
 /*!
     \brief Representation of projection
     \details Either dynamic or static projection representation

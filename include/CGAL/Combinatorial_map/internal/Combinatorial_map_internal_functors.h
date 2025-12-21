@@ -64,7 +64,7 @@
  *   darts have the same info.
  *
  * internal::Test_is_same_attribute_functor<Map1, Map2> to test if two
- *   i-attributes of two darts are isomorphic (ie they have the same info).
+ *   i-attributes of two darts are isomorphic (i.e. they have the same info).
  *
  * internal::Test_is_same_attribute_point_functor<Map1, Map2, i> to test if
  *   the point of two i-attributes are equal.
@@ -208,7 +208,7 @@ template<typename CMap>
 struct Test_is_valid_attribute_functor
 {
   /** Test the validity of a i-cell-attribute.
-   * ie all the darts belonging to a i-cell are linked to the same attribute.
+   * In other words, all the darts belonging to a i-cell are linked to the same attribute.
    * @param adart a dart.
    * @param amark a mark used to mark darts of the i-cell.
    * @return true iff all the darts of the i-cell link to the same attribute.
@@ -220,7 +220,7 @@ struct Test_is_valid_attribute_functor
                   typename CMap::Dart_const_descriptor adart,
                   std::vector<size_type>& marks, bool& ares)
   {
-    CGAL_static_assertion_msg(CMap::Helper::template
+    static_assert(CMap::Helper::template
                               Dimension_index<i>::value>=0,
                               "Test_is_valid_attribute_functor<i> but "
                               " i-attributes are disabled");
@@ -304,7 +304,7 @@ struct Correct_invalid_attributes_functor
                   typename CMap::Dart_descriptor adart,
                   std::vector<size_type>& marks)
   {
-    CGAL_static_assertion_msg(CMap::Helper::template
+    static_assert(CMap::Helper::template
                               Dimension_index<i>::value>=0,
                               "Correct_invalid_attributes_functor<i> but "
                               " i-attributes are disabled");
@@ -362,7 +362,7 @@ struct Cleanup_useless_attributes
   template <unsigned int i>
   static void run(CMap& amap)
   {
-    CGAL_static_assertion_msg(CMap::Helper::template
+    static_assert(CMap::Helper::template
                               Dimension_index<i>::value>=0,
                               "Cleanup_useless_attributes<i> but "
                               " i-attributes are disabled");
@@ -707,7 +707,7 @@ struct Test_is_same_attribute_point_functor
                   typename Map1::Dart_const_descriptor dh1,
                   typename Map2::Dart_const_descriptor dh2)
   {
-    CGAL_static_assertion( Withpoint1==true && Withpoint2==true );
+    static_assert( Withpoint1==true && Withpoint2==true );
     if (m1.template attribute<i>(dh1)==Map1::null_descriptor &&
         m2.template attribute<i>(dh2)==Map2::null_descriptor)
       return true;

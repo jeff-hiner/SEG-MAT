@@ -11,14 +11,11 @@
 #define BOOST_JSON_ERROR_HPP
 
 #include <boost/json/detail/config.hpp>
-#include <boost/json/system_error.hpp>
 
 namespace boost {
 namespace json {
 
-/** Error codes returned by JSON operations
-
-*/
+/// Error codes returned by JSON operations
 enum class error
 {
     //
@@ -64,6 +61,9 @@ enum class error
     /// A string is too large
     string_too_large,
 
+    /// A number is too large
+    number_too_large,
+
     /// error occured when trying to read input
     input_error,
 
@@ -73,6 +73,9 @@ enum class error
 
     /// An exception was thrown during operation
     exception,
+
+    /// A requested element is outside of container's range
+    out_of_range,
 
     /// test failure
     test_failure,
@@ -127,7 +130,19 @@ enum class error
     /// JSON string was expected during conversion
     not_string,
 
-    /// JSON array has size incompatible with target
+    /// std::int64_t was expected during conversion
+    not_int64,
+
+    /// std::uint64_t was expected during conversion
+    not_uint64,
+
+    /// `double` was expected during conversion
+    not_double,
+
+    /// JSON integer was expected during conversion
+    not_integer,
+
+    /// source composite has size incompatible with target
     size_mismatch,
 
     /// none of the possible conversions were successful
@@ -137,8 +152,7 @@ enum class error
     unknown_name,
 };
 
-/** Error conditions corresponding to JSON errors
-*/
+/// Error conditions corresponding to JSON errors
 enum class condition
 {
     /// A parser-related error

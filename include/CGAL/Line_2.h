@@ -41,7 +41,7 @@ class Line_2 : public R_::Kernel_base::Line_2
   typedef typename R_::Kernel_base::Line_2   RLine_2;
 
   typedef Line_2                             Self;
-  CGAL_static_assertion((std::is_same<Self, typename R_::Line_2>::value));
+  static_assert(std::is_same<Self, typename R_::Line_2>::value);
 
 public:
 
@@ -223,19 +223,6 @@ public:
   {
     return R().construct_point_2_object()(*this,i);
   }
-
-  typename R::Boolean
-  operator==(const Line_2 &l) const
-  {
-    return R().equal_2_object()(*this, l);
-  }
-
-  typename R::Boolean
-  operator!=(const Line_2 &l) const
-  {
-    return !(*this == l);
-  }
-
 };
 
 

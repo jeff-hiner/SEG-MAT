@@ -1,4 +1,4 @@
-// Copyright (c) 2009  
+// Copyright (c) 2009-2024
 // Utrecht University (The Netherlands),
 // ETH Zurich (Switzerland),
 // INRIA Sophia-Antipolis (France),
@@ -7,21 +7,22 @@
 //
 // This file is part of CGAL (www.cgal.org)
 //
+// $URL$
+// $Id$
 // SPDX-License-Identifier: LGPL-3.0-or-later OR LicenseRef-Commercial
 //
 // Author(s)     : -
 
-// This file is automatically created by cmake
-// Do not edit manually.
-
 #ifndef CGAL_VERSION_H
 #define CGAL_VERSION_H
 
-#define CGAL_VERSION 5.6-I-900
-#define CGAL_VERSION_NR 1050600900
+#ifndef SWIG
+#define CGAL_VERSION 6.1
+#define CGAL_GIT_HASH abcdef
+#endif
+#define CGAL_VERSION_NR 1060100930
 #define CGAL_SVN_REVISION 99999
-
-#define CGAL_RELEASE_DATE 20240716
+#define CGAL_RELEASE_DATE 20250901
 
 #include <CGAL/version_macros.h>
 

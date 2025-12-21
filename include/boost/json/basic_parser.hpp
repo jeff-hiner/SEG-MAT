@@ -19,85 +19,57 @@
 #include <boost/json/detail/stack.hpp>
 #include <boost/json/detail/stream.hpp>
 #include <boost/json/detail/utf8.hpp>
-
-/*  VFALCO NOTE
-
-    This file is in the detail namespace because it
-    is not allowed to be included directly by users,
-    who should be including <boost/json/basic_parser.hpp>
-    instead, which provides the member function definitions.
-
-    The source code is arranged this way to keep compile
-    times down.
-*/
+#include <boost/json/detail/sbo_buffer.hpp>
 
 namespace boost {
 namespace json {
 
 /** An incremental SAX parser for serialized JSON.
 
-    This implements a SAX-style parser, invoking a
-    caller-supplied handler with each parsing event.
-    To use, first declare a variable of type
-    `basic_parser<T>` where `T` meets the handler
-    requirements specified below. Then call
-    @ref write_some one or more times with the input,
-    setting `more = false` on the final buffer.
-    The parsing events are realized through member
-    function calls on the handler, which exists
-    as a data member of the parser.
-\n
-    The parser may dynamically allocate intermediate
-    storage as needed to accommodate the nesting level
-    of the input JSON. On subsequent invocations, the
-    parser can cheaply re-use this memory, improving
-    performance. This storage is freed when the
-    parser is destroyed
+    This implements a SAX-style parser, invoking a caller-supplied handler with
+    each parsing event. To use, first declare a variable of type
+    `basic_parser<T>` where `T` meets the handler requirements specified below.
+    Then call @ref write_some one or more times with the input, setting
+    `more = false` on the final buffer. The parsing events are realized through
+    member function calls on the handler, which exists as a data member of the
+    parser.
+
+    The parser may dynamically allocate intermediate storage as needed to
+    accommodate the nesting level of the input JSON. On subsequent invocations,
+    the parser can cheaply re-use this memory, improving performance. This
+    storage is freed when the parser is destroyed
 
     @par Usage
-
-    To get the declaration and function definitions
-    for this class it is necessary to include this
-    file instead:
+    To get the declaration and function definitions for this class it is
+    necessary to include this file instead:
     @code
     #include <boost/json/basic_parser_impl.hpp>
     @endcode
 
-    Users who wish to parse JSON into the DOM container
-    @ref value will not use this class directly; instead
-    they will create an instance of @ref parser or
-    @ref stream_parser and use that instead. Alternatively,
-    they may call the function @ref parse. This class is
-    designed for users who wish to perform custom actions
-    instead of building a @ref value. For example, to
-    produce a DOM from an external library.
-\n
-    @note
+    Users who wish to parse JSON into the DOM container @ref value will not use
+    this class directly; instead they will create an instance of @ref parser or
+    @ref stream_parser and use that instead. Alternatively, they may call the
+    function @ref parse. This class is designed for users who wish to perform
+    custom actions instead of building a @ref value. For example, to produce a
+    DOM from an external library.
 
-    By default, only conforming JSON using UTF-8
-    encoding is accepted. However, select non-compliant
-    syntax can be allowed by construction using a
+    @note
+    By default, only conforming JSON using UTF-8 encoding is accepted. However,
+    select non-compliant syntax can be allowed by construction using a
     @ref parse_options set to desired values.
 
     @par Handler
+    The handler provided must be implemented as an object of class type which
+    defines each of the required event member functions below. The event
+    functions return a `bool` where `true` indicates success, and `false`
+    indicates failure. If the member function returns `false`, it must set the
+    error code to a suitable value. This error code will be returned by the
+    write function to the caller.
 
-    The handler provided must be implemented as an
-    object of class type which defines each of the
-    required event member functions below. The event
-    functions return a `bool` where `true` indicates
-    success, and `false` indicates failure. If the
-    member function returns `false`, it must set
-    the error code to a suitable value. This error
-    code will be returned by the write function to
-    the caller.
-\n
-    Handlers are required to declare the maximum
-    limits on various elements. If these limits
-    are exceeded during parsing, then parsing
-    fails with an error.
-\n
-    The following declaration meets the parser's
-    handler requirements:
+    Handlers are required to declare the maximum limits on various elements. If
+    these limits are exceeded during parsing, then parsing fails with an error.
+
+    The following declaration meets the parser's handler requirements:
 
     @code
     struct handler
@@ -266,20 +238,16 @@ namespace json {
     @see
         @ref parse,
         @ref stream_parser,
-        [Validating parser example](../../doc/html/json/examples.html#json.examples.validate).
-
-    @headerfile <boost/json/basic_parser.hpp>
+        \<\<examples_validate, validating parser example\>\>.
 */
 template<class Handler>
 class basic_parser
 {
     enum class state : char
     {
-        doc1,  doc2,  doc3, doc4,
+        doc1,  doc3,
         com1,  com2,  com3, com4,
-        nul1,  nul2,  nul3,
-        tru1,  tru2,  tru3,
-        fal1,  fal2,  fal3,  fal4,
+        lit1,
         str1,  str2,  str3,  str4,
         str5,  str6,  str7,  str8,
         sur1,  sur2,  sur3,
@@ -292,7 +260,7 @@ class basic_parser
         num1,  num2,  num3,  num4,
         num5,  num6,  num7,  num8,
         exp1,  exp2,  exp3,
-        val1,  val2
+        val1,  val2, val3
     };
 
     struct number
@@ -304,11 +272,14 @@ class basic_parser
         bool neg;
     };
 
+    template< bool StackEmpty_, char First_ >
+    struct parse_number_helper;
+
     // optimization: must come first
     Handler h_;
 
     number num_;
-    error_code ec_;
+    system::error_code ec_;
     detail::stack st_;
     detail::utf8_sequence seq_;
     unsigned u1_;
@@ -317,9 +288,12 @@ class basic_parser
     bool done_ = false; // true on complete parse
     bool clean_ = true; // write_some exited cleanly
     const char* end_;
+    detail::sbo_buffer<16 + 16 + 1 + 1> num_buf_;
     parse_options opt_;
     // how many levels deeper the parser can go
     std::size_t depth_ = opt_.max_depth;
+    unsigned char cur_lit_ = 0;
+    unsigned char lit_offset_ = 0;
 
     inline void reserve();
     inline const char* sentinel();
@@ -413,15 +387,16 @@ class basic_parser
         std::integral_constant<bool, StackEmpty_> stack_empty,
         std::integral_constant<bool, AllowComments_> allow_comments,
         /*std::integral_constant<bool, AllowTrailing_>*/ bool allow_trailing,
-        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8);
+        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8,
+        bool allow_bad_utf16);
 
-    template<bool StackEmpty_, bool AllowComments_/*,
+    template<bool AllowComments_/*,
         bool AllowTrailing_, bool AllowBadUTF8_*/>
     const char* resume_value(const char* p,
-        std::integral_constant<bool, StackEmpty_> stack_empty,
         std::integral_constant<bool, AllowComments_> allow_comments,
         /*std::integral_constant<bool, AllowTrailing_>*/ bool allow_trailing,
-        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8);
+        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8,
+        bool allow_bad_utf16);
 
     template<bool StackEmpty_, bool AllowComments_/*,
         bool AllowTrailing_, bool AllowBadUTF8_*/>
@@ -429,7 +404,8 @@ class basic_parser
         std::integral_constant<bool, StackEmpty_> stack_empty,
         std::integral_constant<bool, AllowComments_> allow_comments,
         /*std::integral_constant<bool, AllowTrailing_>*/ bool allow_trailing,
-        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8);
+        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8,
+        bool allow_bad_utf16);
 
     template<bool StackEmpty_, bool AllowComments_/*,
         bool AllowTrailing_, bool AllowBadUTF8_*/>
@@ -437,47 +413,32 @@ class basic_parser
         std::integral_constant<bool, StackEmpty_> stack_empty,
         std::integral_constant<bool, AllowComments_> allow_comments,
         /*std::integral_constant<bool, AllowTrailing_>*/ bool allow_trailing,
-        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8);
+        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8,
+        bool allow_bad_utf16);
 
-    template<bool StackEmpty_>
-    const char* parse_null(const char* p,
-        std::integral_constant<bool, StackEmpty_> stack_empty);
+    template<class Literal>
+    const char* parse_literal(const char* p, Literal literal);
 
-    template<bool StackEmpty_>
-    const char* parse_true(const char* p,
-        std::integral_constant<bool, StackEmpty_> stack_empty);
-
-    template<bool StackEmpty_>
-    const char* parse_false(const char* p,
-        std::integral_constant<bool, StackEmpty_> stack_empty);
-
-    template<bool StackEmpty_, bool IsKey_/*,
-        bool AllowBadUTF8_*/>
+    template<bool StackEmpty_, bool IsKey_>
     const char* parse_string(const char* p,
         std::integral_constant<bool, StackEmpty_> stack_empty,
         std::integral_constant<bool, IsKey_> is_key,
-        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8);
+        bool allow_bad_utf8,
+        bool allow_bad_utf16);
 
-    template<bool StackEmpty_, char First_>
-    const char* parse_number(const char* p,
-        std::integral_constant<bool, StackEmpty_> stack_empty,
-        std::integral_constant<char, First_> first);
-
-    template<bool StackEmpty_, bool IsKey_/*,
-        bool AllowBadUTF8_*/>
-    const char* parse_unescaped(const char* p,
-        std::integral_constant<bool, StackEmpty_> stack_empty,
-        std::integral_constant<bool, IsKey_> is_key,
-        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8);
-
-    template<bool StackEmpty_/*, bool IsKey_,
-        bool AllowBadUTF8_*/>
+    template<bool StackEmpty_>
     const char* parse_escaped(
         const char* p,
-        std::size_t total,
+        std::size_t& total,
         std::integral_constant<bool, StackEmpty_> stack_empty,
-        /*std::integral_constant<bool, IsKey_>*/ bool is_key,
-        /*std::integral_constant<bool, AllowBadUTF8_>*/ bool allow_bad_utf8);
+        bool is_key,
+        bool allow_bad_utf16);
+
+    template<bool StackEmpty_, char First_, number_precision Numbers_>
+    const char* parse_number(const char* p,
+        std::integral_constant<bool, StackEmpty_> stack_empty,
+        std::integral_constant<char, First_> first,
+        std::integral_constant<number_precision, Numbers_> numbers);
 
     // intentionally private
     std::size_t
@@ -487,21 +448,13 @@ class basic_parser
     }
 
 public:
-    /// Copy constructor (deleted)
-    basic_parser(
-        basic_parser const&) = delete;
-
-    /// Copy assignment (deleted)
-    basic_parser& operator=(
-        basic_parser const&) = delete;
-
     /** Destructor.
 
         All dynamically allocated internal memory is freed.
 
         @par Effects
         @code
-        this->handler().~Handler()
+        handler().~Handler()
         @endcode
 
         @par Complexity
@@ -512,11 +465,13 @@ public:
     */
     ~basic_parser() = default;
 
-    /** Constructor.
+    /** Constructors.
 
-        This function constructs the parser with
-        the specified options, with any additional
-        arguments forwarded to the handler's constructor.
+        Overload **(1)** constructs the parser with the specified options, with
+        any additional arguments forwarded to the handler's constructor.
+
+        `basic_parser` is not copyable or movable, so the copy constructor is
+        deleted.
 
         @par Complexity
         Same as `Handler( std::forward< Args >( args )... )`.
@@ -524,14 +479,12 @@ public:
         @par Exception Safety
         Same as `Handler( std::forward< Args >( args )... )`.
 
-        @param opt Configuration settings for the parser.
-        If this structure is default constructed, the
-        parser will accept only standard JSON.
+        @param opt Configuration settings for the parser. If this structure is
+               default constructed, the parser will accept only standard JSON.
+        @param args Optional additional arguments forwarded to the handler's
+               constructor.
 
-        @param args Optional additional arguments
-        forwarded to the handler's constructor.
-
-        @see parse_options
+        @{
     */
     template<class... Args>
     explicit
@@ -539,6 +492,18 @@ public:
         parse_options const& opt,
         Args&&... args);
 
+    /// Overload
+    basic_parser(
+        basic_parser const&) = delete;
+    /// @}
+
+    /** Assignment.
+
+        This type cannot be copied or moved. The copy assignment is deleted.
+    */
+    basic_parser& operator=(
+        basic_parser const&) = delete;
+
     /** Return a reference to the handler.
 
         This function provides access to the constructed
@@ -549,6 +514,8 @@ public:
 
         @par Exception Safety
         No-throw guarantee.
+
+        @{
     */
     Handler&
     handler() noexcept
@@ -556,22 +523,12 @@ public:
         return h_;
     }
 
-    /** Return a reference to the handler.
-
-        This function provides access to the constructed
-        instance of the handler owned by the parser.
-
-        @par Complexity
-        Constant.
-
-        @par Exception Safety
-        No-throw guarantee.
-    */
     Handler const&
     handler() const noexcept
     {
         return h_;
     }
+    /// @}
 
     /** Return the last error.
 
@@ -585,23 +542,20 @@ public:
         @par Exception Safety
         No-throw guarantee.
     */
-    error_code
+    system::error_code
     last_error() const noexcept
     {
         return ec_;
     }
 
-    /** Return true if a complete JSON has been parsed.
+    /** Check if a complete JSON text has been parsed.
 
-        This function returns `true` when all of these
-        conditions are met:
+        This function returns `true` when all of these conditions are met:
 
-        @li A complete serialized JSON has been
-            presented to the parser, and
-
-        @li No error or exception has occurred since the
-            parser was constructed, or since the last call
-            to @ref reset,
+        @li A complete serialized JSON text has been presented to the parser,
+            and
+        @li No error or exception has occurred since the parser was
+            constructed, or since the last call to @ref reset.
 
         @par Complexity
         Constant.
@@ -633,14 +587,13 @@ public:
 
     /** Indicate a parsing failure.
 
-        This changes the state of the parser to indicate
-        that the parse has failed. A parser implementation
-        can use this to fail the parser if needed due to
-        external inputs.
+        This changes the state of the parser to indicate that the parse has
+        failed. A parser implementation can use this to fail the parser if
+        needed due to external inputs.
 
-        @note
-
-        If `!ec`, the stored error code is unspecified.
+        @attention
+        If `! ec.failed()`, an implementation-defined error code that indicates
+        failure will be stored instead.
 
         @par Complexity
         Constant.
@@ -648,71 +601,60 @@ public:
         @par Exception Safety
         No-throw guarantee.
 
-        @param ec The error code to set. If the code does
-        not indicate failure, an implementation-defined
-        error code that indicates failure will be stored
-        instead.
+        @param ec The error code to set.
     */
     void
-    fail(error_code ec) noexcept;
+    fail(system::error_code ec) noexcept;
 
-    /** Parse some of an input string as JSON, incrementally.
+    /** Parse some of input characters as JSON, incrementally.
 
-        This function parses the JSON in the specified
-        buffer, calling the handler to emit each SAX
-        parsing event. The parse proceeds from the
-        current state, which is at the beginning of a
-        new JSON or in the middle of the current JSON
-        if any characters were already parsed.
-    \n
-        The characters in the buffer are processed
-        starting from the beginning, until one of the
-        following conditions is met:
+        This function parses the JSON text in the specified buffer, calling the
+        handler to emit each SAX parsing event. The parse proceeds from the
+        current state, which is at the beginning of a new JSON or in the middle
+        of the current JSON if any characters were already parsed.
 
-        @li All of the characters in the buffer
-        have been parsed, or
+        The characters in the buffer are processed starting from the beginning,
+        until one of the following conditions is met:
 
-        @li Some of the characters in the buffer
-        have been parsed and the JSON is complete, or
-
+        @li All of the characters in the buffer have been parsed, or
+        @li Some of the characters in the buffer have been parsed and the JSON
+            is complete, or
         @li A parsing error occurs.
 
-        The supplied buffer does not need to contain the
-        entire JSON. Subsequent calls can provide more
-        serialized data, allowing JSON to be processed
-        incrementally. The end of the serialized JSON
-        can be indicated by passing `more = false`.
+        The supplied buffer does not need to contain the entire JSON.
+        Subsequent calls can provide more serialized data, allowing JSON to be
+        processed incrementally. The end of the serialized JSON can be
+        indicated by passing `more = false`.
 
         @par Complexity
         Linear in `size`.
 
         @par Exception Safety
-        Basic guarantee.
-        Calls to the handler may throw.
-        Upon error or exception, subsequent calls will
-        fail until @ref reset is called to parse a new JSON.
+        Basic guarantee. Calls to the handler may throw.
+
+        Upon error or exception, subsequent calls will fail until @ref reset
+        is called to parse a new JSON.
 
         @return The number of characters successfully
         parsed, which may be smaller than `size`.
 
-        @param more `true` if there are possibly more
-        buffers in the current JSON, otherwise `false`.
+        @param more `true` if there are possibly more buffers in the current
+               JSON, otherwise `false`.
 
-        @param data A pointer to a buffer of `size`
-        characters to parse.
+        @param data A pointer to a buffer of `size` characters to parse.
 
-        @param size The number of characters pointed to
-        by `data`.
+        @param size The number of characters pointed to by `data`.
 
         @param ec Set to the error, if any occurred.
+
+        @{
     */
-/** @{ */
     std::size_t
     write_some(
         bool more,
         char const* data,
         std::size_t size,
-        error_code& ec);
+        system::error_code& ec);
 
     std::size_t
     write_some(
@@ -720,7 +662,7 @@ public:
         char const* data,
         std::size_t size,
         std::error_code& ec);
-/** @} */
+    /// @}
 };
 
 } // namespace json

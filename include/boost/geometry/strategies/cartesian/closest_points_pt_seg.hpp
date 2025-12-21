@@ -1,6 +1,6 @@
 // Boost.Geometry
 
-// Copyright (c) 2021, Oracle and/or its affiliates.
+// Copyright (c) 2021-2023, Oracle and/or its affiliates.
 
 // Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 
@@ -9,6 +9,8 @@
 
 #ifndef BOOST_GEOMETRY_STRATEGIES_CARTESIAN_CLOSEST_POINTS_PT_SEG_HPP
 #define BOOST_GEOMETRY_STRATEGIES_CARTESIAN_CLOSEST_POINTS_PT_SEG_HPP
+
+#include <boost/geometry/algorithms/convert.hpp>
 
 #include <boost/geometry/core/coordinate_promotion.hpp>
 
@@ -40,7 +42,7 @@ struct compute_closest_point_to_segment
             <
                 CalculationType,
                 dimension<PointOfSegment>::value,
-                typename coordinate_system<PointOfSegment>::type
+                coordinate_system_t<PointOfSegment>
             >;
 
         // For convenience
@@ -115,8 +117,8 @@ public:
           <
             typename select_most_precise
                 <
-                    typename coordinate_type<Point>::type,
-                    typename coordinate_type<PointOfSegment>::type,
+                    coordinate_type_t<Point>,
+                    coordinate_type_t<PointOfSegment>,
                     CalculationType
                 >::type
           >
@@ -129,7 +131,7 @@ public:
         assert_dimension_equal<Point, PointOfSegment>();
 
         using calculation_type = typename calculation_type<Point, PointOfSegment>::type;
-        
+
         return detail::compute_closest_point_to_segment<calculation_type>::apply(p, p1, p2);
     }
 

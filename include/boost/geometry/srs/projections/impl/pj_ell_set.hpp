@@ -129,7 +129,7 @@ inline bool pj_ell_init_ellps(srs::dpar::parameters<T> const& params, T &a, T &b
             const pj_ellps_type<T>* pj_ellps = pj_get_ellps<T>().first;
             const int n = pj_get_ellps<T>().second;
             int i = it->template get_value<int>();
-        
+
             if (i < 0 || i >= n) {
                 BOOST_THROW_EXCEPTION( projection_exception(error_unknown_ellp_param) );
             }
@@ -244,7 +244,7 @@ inline void pj_ell_init(Params const& params, T &a, T &es)
         } else if (pj_param_f<srs::spar::rf>(params, "rf", srs::dpar::rf, es)) { /* recip flattening */
             if (es == 0.0) {
                 BOOST_THROW_EXCEPTION( projection_exception(error_rev_flattening_is_zero) );
-            }    
+            }
             es = 1./ es;
             es = es * (2. - es);
             is_ell_set = true;
@@ -431,7 +431,7 @@ struct static_srs_tag_check_nonexpanded
 template <typename Params>
 struct static_srs_tag_check_ellps
 {
-    typedef typename geometry::tag
+    using type = geometry::tag_t
         <
             typename srs::spar::detail::ellps_traits
                 <
@@ -441,13 +441,13 @@ struct static_srs_tag_check_ellps
                             srs::spar::detail::is_param_tr<srs::spar::detail::ellps_traits>::pred
                         >::type
                 >::template model_type<double>::type // dummy type
-        >::type type;
+        >;
 };
 
 template <typename Params>
 struct static_srs_tag_check_datum
 {
-    typedef typename geometry::tag
+    using type = geometry::tag_t
         <
             typename srs::spar::detail::ellps_traits
                 <
@@ -460,7 +460,7 @@ struct static_srs_tag_check_datum
                                 >::type
                         >::ellps_type
                 >::template model_type<double>::type // dummy type
-        >::type type;
+        >;
 };
 
 template

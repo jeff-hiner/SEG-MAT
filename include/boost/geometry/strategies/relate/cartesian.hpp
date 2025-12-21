@@ -1,7 +1,8 @@
 // Boost.Geometry
 
-// Copyright (c) 2020, Oracle and/or its affiliates.
+// Copyright (c) 2020-2023, Oracle and/or its affiliates.
 
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Licensed under the Boost Software License version 1.0.
@@ -21,6 +22,8 @@
 #include <boost/geometry/strategies/cartesian/point_in_poly_winding.hpp>
 #include <boost/geometry/strategies/cartesian/disjoint_box_box.hpp>
 
+#include <boost/geometry/strategies/distance/detail.hpp>
+#include <boost/geometry/strategies/distance/services.hpp>
 #include <boost/geometry/strategies/envelope/cartesian.hpp>
 #include <boost/geometry/strategies/relate/services.hpp>
 #include <boost/geometry/strategies/detail.hpp>
@@ -29,6 +32,9 @@
 #include <boost/geometry/strategy/cartesian/side_robust.hpp>
 #include <boost/geometry/strategy/cartesian/side_by_triangle.hpp>
 #include <boost/geometry/strategy/cartesian/area_box.hpp>
+
+#include <boost/geometry/strategies/distance/detail.hpp>
+#include <boost/geometry/strategies/distance/services.hpp>
 
 #include <boost/geometry/util/type_traits.hpp>
 
@@ -154,6 +160,13 @@ public:
         return strategy::intersection::cartesian_segments<CalculationType>();
     }
 
+    template <typename Geometry1, typename Geometry2>
+    static auto comparable_distance(Geometry1 const&, Geometry2 const&,
+                                    distance::detail::enable_if_pp_t<Geometry1, Geometry2> * = nullptr)
+    {
+        return strategy::distance::comparable::pythagoras<CalculationType>();
+    }
+
     // side
 
     static auto side()
@@ -187,6 +200,14 @@ public:
     {
         return strategy::within::cartesian_box_box();
     }
+
+    template <typename ComparePolicy, typename EqualsPolicy>
+    using compare_type = typename strategy::compare::cartesian
+        <
+            ComparePolicy,
+            EqualsPolicy,
+            -1
+        >;
 };
 
 

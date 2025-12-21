@@ -96,7 +96,7 @@ namespace CGAL {
 
     typedef Tag_false Use_mark;      ///< True iff this iterator uses mark
 
-    CGAL_static_assertion( Ai>=0 && Ai<=Map::dimension );
+    static_assert( Ai>=0 && Ai<=Map::dimension );
 
   public:
     /// Main constructor.
@@ -134,7 +134,7 @@ namespace CGAL {
   //****************************************************************************
   /* Class CMap_dart_iterator_basic_of_two_alpha<Ai,delta>: to iterate
    * on the darts of the orbit <Ai,Ai+delta>: Ai<Ai+delta<=dimension.
-   * This general case if for delta>1 (ie at most 4 darts).
+   * This general case if for delta>1 (i.e. at most 4 darts).
    * Basic classes do not guaranty correct marks (i.e. do not unmark darts in
    * the destructor, possible problem with the rewind). If you are not sure,
    * use CMap_dart_iterator_basic_of_two_alpha.
@@ -154,7 +154,7 @@ namespace CGAL {
     typedef Tag_false Use_mark;      ///< True iff this iterator uses mark
     typedef Tag_true Basic_iterator; ///< True iff this iterator is basic
 
-    CGAL_static_assertion( (0<=Ai && Ai+delta<=Map::dimension && delta>1) );
+    static_assert(0<=Ai && Ai+delta<=Map::dimension && delta>1);
 
   public:
     /// Main constructor.
@@ -249,7 +249,7 @@ namespace CGAL {
   class GMap_dart_iterator_basic_of_two_alpha;
   /* Class CMap_dart_iterator_basic_of_two_alpha<Ai,1>: to iterate
    * on the darts of the orbit <Ai,Ai+1>: Ai<Ai+1<=dimension.
-   * specialisation because here Aio(Ai+1) is not an involution.
+   * specialization because here Aio(Ai+1) is not an involution.
    * Basic classes do not guaranty correct marks (i.e. do not unmark darts in
    * the destructor, possible problem with the rewind). If you are not sure,
    * use CMap_dart_iterator_basic_of_two_alpha.
@@ -269,7 +269,7 @@ namespace CGAL {
     typedef Tag_false Use_mark;      ///< True iff this iterator uses mark
     typedef Tag_true Basic_iterator; ///< True iff this iterator is basic
 
-    CGAL_static_assertion(0<=Ai && Ai+1<=Map_::dimension);
+    static_assert(0<=Ai && Ai+1<=Map_::dimension);
 
   public:
     /// Main constructor.
@@ -445,7 +445,7 @@ namespace CGAL {
   /* Class CMap_dart_iterator_basic_of_three_alpha<Ai,delta1,delta2>: to iterate
    * on the darts of the orbit <Ai,Ai+delta1,Ai+delta2>:
    * Ai<Ai+delta1<Ai+delta2<=dimension.
-   * This general case if for delta1>1 and delta2>1 (ie at most 8 darts).
+   * This general case if for delta1>1 and delta2>1 (i.e. at most 8 darts).
    * Basic classes do not guaranty correct marks (i.e. do not unmark darts in
    * the destructor, possible problem with the rewind). If you are not sure,
    * use CMap_dart_iterator_basic_of_two_alpha.
@@ -468,9 +468,9 @@ namespace CGAL {
     typedef Tag_false Use_mark;      ///< True iff this iterator uses mark
     typedef Tag_true Basic_iterator; ///< True iff this iterator is basic
 
-    CGAL_static_assertion( (0<=Ai && delta1<delta2 &&
+    static_assert(0<=Ai && delta1<delta2 &&
                             Ai+delta2<=Map::dimension &&
-                            delta1>1) );
+                            delta1>1);
 
   public:
     /// Main constructor.
@@ -508,7 +508,7 @@ namespace CGAL {
 
     typedef Tag_true Basic_iterator; ///< True iff this iterator is basic
 
-    CGAL_static_assertion( Ai<Aj && Aj<Ak && Ak<=Map::dimension );
+    static_assert( Ai<Aj && Aj<Ak && Ak<=Map::dimension );
 
   public:
     /// Main constructor.
@@ -590,7 +590,7 @@ namespace CGAL {
     typedef Tag_true Use_mark; ///< True iff this iterator uses mark
     typedef Tag_true Basic_iterator; ///< True iff this iterator is basic
 
-    CGAL_static_assertion( i>=0 && i<=Map::dimension+1 );
+    static_assert( i>=0 && i<=Map::dimension+1 );
 
   public:
     /// Main constructor.

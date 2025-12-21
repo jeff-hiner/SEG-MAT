@@ -32,6 +32,10 @@
 #include <boost/iterator/function_output_iterator.hpp>
 #include <boost/container/small_vector.hpp>
 
+#ifdef CGAL_DEBUG_DECIMATION
+#include <CGAL/IO/polygon_soup_io.h>
+#endif
+
 #include <algorithm>
 #include <unordered_map>
 
@@ -243,7 +247,7 @@ bool is_edge_between_coplanar_faces(edge_descriptor e,
   Point_ref_3 s = get(vpm, target(next(opposite(h, tm), tm), tm) );
 
   if (coplanar_cos_threshold==-1)
-    return coplanar(p, q, r, s);
+    return coplanar(p, q, r, s) && coplanar_orientation(p, q, r, s)!=CGAL::POSITIVE;
   else
   {
     typename Kernel::Compare_dihedral_angle_3 pred;
@@ -280,9 +284,9 @@ bool is_target_vertex_a_corner(halfedge_descriptor h,
   // (for example when there is a tangency between surfaces and is shared)
   if (h2 == graph_traits::null_halfedge()) return true;
 
-  const Point_3& p = get(vpm, source(h, tm));
-  const Point_3& q = get(vpm, target(h, tm));
-  const Point_3& r = get(vpm, source(h2, tm));
+  const Point_3 p = get(vpm, source(h, tm));
+  const Point_3 q = get(vpm, target(h, tm));
+  const Point_3 r = get(vpm, source(h2, tm));
 
   if (coplanar_cos_threshold==-1)
     return !collinear(p, q, r);
@@ -299,7 +303,7 @@ template <typename Kernel,
           typename VertexPointMap>
 void
 mark_constrained_edges(
-  TriangleMesh& tm,
+  const TriangleMesh& tm,
   EdgeIsConstrainedMap edge_is_constrained,
   double coplanar_cos_threshold,
   const VertexPointMap& vpm)
@@ -319,7 +323,7 @@ template <typename Kernel,
           typename VertexCornerIdMap>
 std::size_t
 mark_corner_vertices(
-  TriangleMesh& tm,
+  const TriangleMesh& tm,
   EdgeIsConstrainedMap& edge_is_constrained,
   VertexCornerIdMap& vertex_corner_id,
   double coplanar_cos_threshold,
@@ -546,7 +550,7 @@ template <typename Kernel,
           typename FaceCCIdMap,
           typename VertexPointMap>
 std::pair<std::size_t, std::size_t>
-tag_corners_and_constrained_edges(TriangleMesh& tm,
+tag_corners_and_constrained_edges(const TriangleMesh& tm,
                                   double coplanar_cos_threshold,
                                   VertexCornerIdMap& vertex_corner_id,
                                   EdgeIsConstrainedMap& edge_is_constrained,
@@ -696,7 +700,7 @@ bool decimate_impl(const TriangleMesh& tm,
       {
         if (csts.size() > 3 && do_not_triangulate_faces)
         {
-          // TODO this is not optimal at all since we already have the set of contraints,
+          // TODO this is not optimal at all since we already have the set of constraints,
           //      we could work on the graph on constraint and recover only the orientation
           //      of the edge. To be done if someone find it too slow.
           std::vector<halfedge_descriptor> hborders;
@@ -834,7 +838,7 @@ bool decimate_impl(const TriangleMeshIn& tm_in,
   }
 
   std::vector< boost::container::small_vector<std::size_t,3> > faces;
-  bool remeshing_failed = decimate_impl<Kernel>(tm_in,
+  bool decimate_success = decimate_impl<Kernel>(tm_in,
                                                 nb_corners_and_nb_cc,
                                                 vertex_corner_id,
                                                 edge_is_constrained,
@@ -848,6 +852,10 @@ bool decimate_impl(const TriangleMeshIn& tm_in,
 
   if (!is_polygon_soup_a_polygon_mesh(faces))
   {
+#ifdef CGAL_DEBUG_DECIMATION
+    CGAL::IO::write_polygon_soup("soup.off", corners, faces);
+    std::cout << "the output is not a valid polygon mesh!" << std::endl;
+#endif
     return false;
   }
 
@@ -856,7 +864,7 @@ bool decimate_impl(const TriangleMeshIn& tm_in,
                                parameters::point_to_vertex_map(f_id_tracker.v2v_map()).
                                            polygon_to_face_map(f_id_tracker.f2f_map()),
                                parameters::vertex_point_map(vpm_out));
-  return remeshing_failed;
+  return decimate_success;
 }
 
 template <typename vertex_descriptor,
@@ -1019,11 +1027,13 @@ void propagate_corner_status(
 template <typename Kernel,
           typename TriangleMeshRange,
           typename MeshMap,
-          typename VertexPointMap>
+          typename VertexPointMap,
+          typename TagFunction>
 bool decimate_meshes_with_common_interfaces_impl(TriangleMeshRange& meshes,
                                                  MeshMap mesh_map,
-                                                 double coplanar_cos_threshold,
+                                                 const TagFunction& tag_function,
                                                  const std::vector<VertexPointMap>& vpms,
+                                                 bool shared_on_boundary_only,
                                                  bool do_not_triangulate_faces)
 {
   typedef typename boost::property_traits<MeshMap>::value_type Triangle_mesh;
@@ -1033,7 +1043,6 @@ bool decimate_meshes_with_common_interfaces_impl(TriangleMeshRange& meshes,
   typedef typename graph_traits::vertex_descriptor vertex_descriptor;
   typedef typename graph_traits::edge_descriptor edge_descriptor;
   typedef typename graph_traits::face_descriptor face_descriptor;
-  CGAL_assertion(coplanar_cos_threshold<0);
   typedef typename graph_traits::halfedge_descriptor halfedge_descriptor;
 
   // declare and init all property maps
@@ -1092,23 +1101,37 @@ bool decimate_meshes_with_common_interfaces_impl(TriangleMeshRange& meshes,
 
   //start by detecting and marking all shared vertices
   mesh_id = 0;
+
+  auto register_point =
+    [&vertex_shared_maps, &point_to_vertex_maps, &vpms]
+    (vertex_descriptor v, std::size_t mesh_id)
+  {
+    std::multimap<std::size_t, vertex_descriptor>& mesh_id_to_vertex =
+      point_to_vertex_maps[get(vpms[mesh_id], v)];
+    if (!mesh_id_to_vertex.empty())
+      put(vertex_shared_maps[mesh_id], v, true);
+    if (mesh_id_to_vertex.size()==1)
+    {
+      std::pair<std::size_t, vertex_descriptor> other=*mesh_id_to_vertex.begin();
+      put(vertex_shared_maps[other.first], other.second, true);
+    }
+    mesh_id_to_vertex.insert( std::make_pair(mesh_id, v) );
+  };
+
   for(Triangle_mesh* tm_ptr : mesh_ptrs)
   {
     Triangle_mesh& tm = *tm_ptr;
 
-    for(vertex_descriptor v : vertices(tm))
-    {
-      std::multimap<std::size_t, vertex_descriptor>& mesh_id_to_vertex =
-        point_to_vertex_maps[get(vpms[mesh_id], v)];
-      if (!mesh_id_to_vertex.empty())
-        put(vertex_shared_maps[mesh_id], v, true);
-      if (mesh_id_to_vertex.size()==1)
+    if (shared_on_boundary_only)
+      for(halfedge_descriptor h : halfedges(tm))
       {
-        std::pair<std::size_t, vertex_descriptor> other=*mesh_id_to_vertex.begin();
-        put(vertex_shared_maps[other.first], other.second, true);
+        if (!is_border(h,tm)) continue;
+        vertex_descriptor v = target(h, tm);
+        register_point(v, mesh_id);
       }
-      mesh_id_to_vertex.insert( std::make_pair(mesh_id, v) );
-    }
+    else
+      for(vertex_descriptor v : vertices(tm))
+        register_point(v, mesh_id);
 
     ++mesh_id;
   }
@@ -1128,13 +1151,11 @@ bool decimate_meshes_with_common_interfaces_impl(TriangleMeshRange& meshes,
       put(face_cc_ids_maps[mesh_id], f, -1);
 
     if (!mesh_has_non_manifold_vertices[mesh_id])
-      nb_corners_and_nb_cc_all[mesh_id] =
-        tag_corners_and_constrained_edges<Kernel>(tm,
-                                                  coplanar_cos_threshold,
-                                                  vertex_corner_id_maps[mesh_id],
-                                                  edge_is_constrained_maps[mesh_id],
-                                                  face_cc_ids_maps[mesh_id],
-                                                  vpms[mesh_id]);
+      nb_corners_and_nb_cc_all[mesh_id] = tag_function(tm,
+                                                       vertex_corner_id_maps[mesh_id],
+                                                       edge_is_constrained_maps[mesh_id],
+                                                       face_cc_ids_maps[mesh_id],
+                                                       vpms[mesh_id]);
     else
     {
       nb_corners_and_nb_cc_all[mesh_id]={0,1};
@@ -1224,7 +1245,7 @@ bool decimate_meshes_with_common_interfaces_impl(TriangleMeshRange& meshes,
         {
           typedef std::pair<const std::size_t, vertex_descriptor> Map_pair_type;
           auto find_res = point_to_vertex_maps.find(corners[cid]);
-          assert(find_res != point_to_vertex_maps.end());
+          if (find_res == point_to_vertex_maps.end()) continue; // the point is not shared
           for(Map_pair_type& mp : find_res->second)
           {
             std::size_t other_mesh_id = mp.first;
@@ -1265,13 +1286,47 @@ bool decimate_meshes_with_common_interfaces_impl(TriangleMeshRange& meshes,
     }
     CGAL_assertion(is_polygon_soup_a_polygon_mesh(all_faces[mesh_id]));
 
-    //clear(tm);
-    tm.clear_without_removing_property_maps();
+    remove_all_elements(tm);
     polygon_soup_to_polygon_mesh(all_corners[mesh_id], all_faces[mesh_id],
                                  tm, parameters::default_values(), parameters::vertex_point_map(vpms[mesh_id]));
   }
 
   return res;
+}
+
+template <typename Kernel,
+          typename TriangleMeshRange,
+          typename MeshMap,
+          typename VertexPointMap>
+bool decimate_meshes_with_common_interfaces_impl(TriangleMeshRange& meshes,
+                                                 MeshMap mesh_map,
+                                                 double coplanar_cos_threshold,
+                                                 const std::vector<VertexPointMap>& vpms,
+                                                 bool shared_on_boundary_only,
+                                                 bool do_not_triangulate_faces)
+{
+  typedef typename boost::property_traits<MeshMap>::value_type Triangle_mesh;
+  auto tag_function = [coplanar_cos_threshold](Triangle_mesh& tm,
+                                               typename boost::property_map<Triangle_mesh, CGAL::dynamic_vertex_property_t<std::size_t> >::type vertex_corner_id,
+                                               typename boost::property_map<Triangle_mesh, CGAL::dynamic_edge_property_t<bool> >::type edge_is_constrained,
+                                               typename boost::property_map<Triangle_mesh, CGAL::dynamic_face_property_t<std::size_t> >::type face_cc_ids,
+                                               VertexPointMap vpm)
+  {
+    return tag_corners_and_constrained_edges<Kernel>(tm,
+                                                     coplanar_cos_threshold,
+                                                     vertex_corner_id,
+                                                     edge_is_constrained,
+                                                     face_cc_ids,
+                                                     vpm);
+  };
+
+  return decimate_meshes_with_common_interfaces_impl<Kernel>(meshes,
+                                                             mesh_map,
+                                                             tag_function,
+                                                             vpms,
+                                                             shared_on_boundary_only,
+                                                             do_not_triangulate_faces);
+
 }
 
 } //end of namespace Planar_segmentation
@@ -1315,7 +1370,9 @@ bool decimate_meshes_with_common_interfaces_impl(TriangleMeshRange& meshes,
  *      \cgalParamExtra{The geometric traits class must be compatible with the vertex point type.}
  *    \cgalParamNEnd
  *    \cgalParamNBegin{edge_is_constrained_map}
- *      \cgalParamDescription{a property map filled by this function and that will contain `true` if an edge is on the border of a patch and `false` otherwise.}
+ *      \cgalParamDescription{a property map where the user should put `true` for edges that must be considered as on the boundary of a patch.
+ *                            Additionally, the map is updated by this function and will contain `true` if, based on the angle criteria, an edge is
+ *                            on the boundary of a patch and `false` otherwise.}
  *      \cgalParamType{a class model of `ReadWritePropertyMap` with `boost::graph_traits<TriangleMeshIn>::%edge_descriptor`
  *                     as key type and `bool` as value type}
  *      \cgalParamDefault{None}
@@ -1398,6 +1455,7 @@ void remesh_planar_patches(const TriangleMeshIn& tm_in,
   typedef typename GetVertexPointMap <TriangleMeshIn, NamedParametersOut>::type VPM_out;
   using parameters::choose_parameter;
   using parameters::get_parameter;
+  using parameters::is_default_parameter;
 
   typedef typename boost::graph_traits<TriangleMeshIn> graph_traits;
   typedef typename graph_traits::edge_descriptor edge_descriptor;
@@ -1433,7 +1491,8 @@ void remesh_planar_patches(const TriangleMeshIn& tm_in,
     face_cc_ids = choose_parameter<Default_FCM>(get_parameter(np_in, internal_np::face_patch),
                                                 dynamic_face_property_t<std::size_t>(), tm_in);
 
-  for(edge_descriptor e : edges(tm_in)) put(edge_is_constrained, e, false);
+  if (is_default_parameter<NamedParametersIn, internal_np::edge_is_constrained_t>::value)
+    for(edge_descriptor e : edges(tm_in)) put(edge_is_constrained, e, false);
   for(vertex_descriptor v : vertices(tm_in)) put(vertex_corner_id, v, Planar_segmentation::default_id());
   for(face_descriptor f : faces(tm_in)) put(face_cc_ids, f, -1);
 
@@ -1627,7 +1686,7 @@ bool decimate_meshes_with_common_interfaces(TriangleMeshRange& meshes, double co
 
   for(Mesh_descriptor& md : meshes)
     vpms.push_back( get(boost::vertex_point, mesh_map[md]) );
-  return Planar_segmentation::decimate_meshes_with_common_interfaces_impl<Kernel>(meshes, mesh_map, coplanar_cos_threshold, vpms, do_not_triangulate_faces);
+  return Planar_segmentation::decimate_meshes_with_common_interfaces_impl<Kernel>(meshes, mesh_map, coplanar_cos_threshold, vpms, true, do_not_triangulate_faces);
 }
 
 template <class TriangleMesh>

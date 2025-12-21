@@ -3,12 +3,11 @@
 // Copyright (c) 2007-2022 Barend Gehrels, Amsterdam, the Netherlands.
 // Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
 // Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
-// Copyright (c) 2017 Adam Wulkiewicz, Lodz, Poland.
+// Copyright (c) 2017-2023 Adam Wulkiewicz, Lodz, Poland.
 // Copyright (c) 2020 Baidyanath Kundu, Haldia, India
 
 // This file was modified by Oracle on 2014-2021.
 // Modifications copyright (c) 2014-2021 Oracle and/or its affiliates.
-
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
@@ -24,14 +23,13 @@
 #include <cstddef>
 #include <string>
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/tokenizer.hpp>
-
-#include <boost/algorithm/string.hpp>
 #include <boost/range/begin.hpp>
 #include <boost/range/end.hpp>
 #include <boost/range/size.hpp>
 #include <boost/range/value_type.hpp>
+#include <boost/tokenizer.hpp>
 #include <boost/throw_exception.hpp>
 
 #include <boost/geometry/algorithms/assign.hpp>
@@ -98,9 +96,7 @@ struct read_wkt_exception : public geometry::exception
         complete = message + "' in (" + wkt.substr(0, 100) + ")";
     }
 
-    virtual ~read_wkt_exception() throw() {}
-
-    virtual const char* what() const throw()
+    const char* what() const noexcept override
     {
         return complete.c_str();
     }
@@ -136,7 +132,7 @@ struct parsing_assigner
                              Point& point,
                              std::string const& wkt)
     {
-        using coordinate_type = typename coordinate_type<Point>::type;
+        using coordinate_type = coordinate_type_t<Point>;
 
         // Stop at end of tokens, or at "," ot ")"
         bool finished = (it == end || *it == "," || *it == ")");
@@ -267,7 +263,7 @@ template <typename Geometry,
 struct stateful_range_appender
 {
     // NOTE: Geometry is a reference
-    inline void append(Geometry geom, typename geometry::point_type<Geometry>::type const& point, bool)
+    inline void append(Geometry geom, geometry::point_type_t<Geometry> const& point, bool)
     {
         geometry::append(geom, point);
     }
@@ -276,11 +272,8 @@ struct stateful_range_appender
 template <typename Geometry>
 struct stateful_range_appender<Geometry, open>
 {
-    using point_type = typename geometry::point_type<Geometry>::type;
-    using size_type = typename boost::range_size
-        <
-            typename util::remove_cptrref<Geometry>::type
-        >::type;
+    using point_type = geometry::point_type_t<Geometry>;
+    using size_type = typename boost::range_size<util::remove_cptrref_t<Geometry>>::type;
 
     BOOST_STATIC_ASSERT((util::is_ring<Geometry>::value));
 
@@ -333,7 +326,7 @@ private:
 template <typename Geometry>
 struct container_appender
 {
-    using point_type = typename geometry::point_type<Geometry>::type;
+    using point_type = geometry::point_type_t<Geometry>;
 
     template <typename TokenizerIterator>
     static inline void apply(TokenizerIterator& it,
@@ -426,8 +419,7 @@ struct ring_parser
 template <typename Polygon>
 struct polygon_parser
 {
-    using ring_return_type = typename ring_return_type<Polygon>::type;
-    using appender = container_appender<ring_return_type>;
+    using appender = container_appender<ring_return_type_t<Polygon>>;
 
     template <typename TokenizerIterator>
     static inline void apply(TokenizerIterator& it,
@@ -450,7 +442,7 @@ struct polygon_parser
             }
             else
             {
-                typename ring_type<Polygon>::type ring;
+                ring_type_t<Polygon> ring;
                 appender::apply(it, end, wkt, ring);
                 range::push_back(geometry::interior_rings(poly), std::move(ring));
             }
@@ -458,6 +450,35 @@ struct polygon_parser
             if (it != end && *it == ",")
             {
                 // Skip "," after ring is parsed
+                ++it;
+            }
+        }
+
+        handle_close_parenthesis(it, end, wkt);
+    }
+};
+
+template<typename PolyhedralSurface>
+struct polyhedral_surface_parser
+{
+    using polygon_t = typename PolyhedralSurface::polygon_type;
+
+    template <typename TokenizerIterator>
+    static inline void apply(TokenizerIterator& it,
+                             TokenizerIterator const& end,
+                             std::string const& wkt,
+                             PolyhedralSurface& polyhedral)
+    {
+        handle_open_parenthesis(it, end, wkt);
+
+        // Parse polygons
+        while (it != end && *it != ")")
+        {
+            traits::resize<PolyhedralSurface>::apply(polyhedral, boost::size(polyhedral) + 1);
+            polygon_parser<polygon_t>::apply(it, end, wkt, *(boost::end(polyhedral) - 1));
+            if (it != end && *it == ",")
+            {
+                // Skip "," after multi-element is parsed
                 ++it;
             }
         }
@@ -525,7 +546,7 @@ inline void handle_empty_z_m(TokenizerIterator& it,
 }
 
 
-template <typename Geometry, typename Tag = typename geometry::tag<Geometry>::type>
+template <typename Geometry, typename Tag = geometry::tag_t<Geometry>>
 struct dimension
     : geometry::dimension<Geometry>
 {};
@@ -754,7 +775,7 @@ struct box_parser
     {
         auto const tokens{make_tokenizer(wkt)};
         auto it = tokens.begin();
-        auto end = tokens.end();
+        auto const end = tokens.end();
 
         apply(it, end, wkt, box);
 
@@ -790,7 +811,7 @@ struct box_parser
             BOOST_THROW_EXCEPTION(read_wkt_exception("Should start with 'POLYGON' or 'BOX'", wkt));
         }
 
-        using point_type = typename point_type<Box>::type;
+        using point_type = point_type_t<Box>;
         std::vector<point_type> points;
         container_inserter<point_type>::apply(it, end, wkt, std::back_inserter(points));
 
@@ -835,7 +856,7 @@ struct segment_parser
     {
         auto const tokens{make_tokenizer(wkt)};
         auto it = tokens.begin();
-        auto end = tokens.end();
+        auto const end = tokens.end();
 
         apply(it, end, wkt, segment);
 
@@ -859,7 +880,7 @@ struct segment_parser
             BOOST_THROW_EXCEPTION(read_wkt_exception("Should start with 'LINESTRING' or 'SEGMENT'", wkt));
         }
 
-        using point_type = typename point_type<Segment>::type;
+        using point_type = point_type_t<Segment>;
         std::vector<point_type> points;
         container_inserter<point_type>::apply(it, end, wkt, std::back_inserter(points));
 
@@ -986,7 +1007,7 @@ private:
                                bool = true)
     {
         Geom g;
-        ReadWkt<Geom, typename tag<Geom>::type>::apply(it, end, wkt, g);
+        ReadWkt<Geom, tag_t<Geom>>::apply(it, end, wkt, g);
         AppendPolicy::apply(geometry, g);
         return true;
     }
@@ -1026,7 +1047,7 @@ private:
 namespace dispatch
 {
 
-template <typename Geometry, typename Tag = typename tag<Geometry>::type>
+template <typename Geometry, typename Tag = tag_t<Geometry>>
 struct read_wkt {};
 
 
@@ -1071,6 +1092,15 @@ struct read_wkt<Geometry, polygon_tag>
         >
 {};
 
+template <typename Geometry>
+struct read_wkt<Geometry, polyhedral_surface_tag>
+    : detail::wkt::geometry_parser
+        <
+            Geometry,
+            detail::wkt::polyhedral_surface_parser,
+            detail::wkt::prefix_polyhedral_surface
+        >
+{};
 
 template <typename MultiGeometry>
 struct read_wkt<MultiGeometry, multi_point_tag>
@@ -1122,7 +1152,7 @@ struct read_wkt<DynamicGeometry, dynamic_geometry_tag>
     {
         auto tokens{detail::wkt::make_tokenizer(wkt)};
         auto it = tokens.begin();
-        auto end = tokens.end();
+        auto const end = tokens.end();
         if (it == end)
         {
             BOOST_THROW_EXCEPTION(read_wkt_exception(
@@ -1192,10 +1222,10 @@ struct read_wkt<Geometry, geometry_collection_tag>
 #endif // DOXYGEN_NO_DISPATCH
 
 /*!
-\brief Parses OGC Well-Known Text (\ref WKT) into a geometry (any geometry)
+\brief Parses OGC \well_known_text (\wkt) into a geometry (any geometry)
 \ingroup wkt
 \tparam Geometry \tparam_geometry
-\param wkt string containing \ref WKT
+\param wkt string containing \wkt
 \param geometry \param_geometry output geometry
 \ingroup wkt
 \qbk{[include reference/io/read_wkt.qbk]}
@@ -1208,10 +1238,10 @@ inline void read_wkt(std::string const& wkt, Geometry& geometry)
 }
 
 /*!
-\brief Parses OGC Well-Known Text (\ref WKT) into a geometry (any geometry) and returns it
+\brief Parses OGC \well_known_text (\wkt) into a geometry (any geometry) and returns it
 \ingroup wkt
 \tparam Geometry \tparam_geometry
-\param wkt string containing \ref WKT
+\param wkt string containing \wkt
 \ingroup wkt
 \qbk{[include reference/io/from_wkt.qbk]}
 */

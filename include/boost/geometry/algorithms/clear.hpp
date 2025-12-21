@@ -3,9 +3,11 @@
 // Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
 // Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
 // Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+// Copyright (c) 2024 Adam Wulkiewicz, Lodz, Poland.
 
-// This file was modified by Oracle on 2020-2021.
-// Modifications copyright (c) 2020-2021, Oracle and/or its affiliates.
+// This file was modified by Oracle on 2020-2023.
+// Modifications copyright (c) 2020-2023, Oracle and/or its affiliates.
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
@@ -22,7 +24,6 @@
 #include <type_traits>
 
 #include <boost/geometry/algorithms/not_implemented.hpp>
-#include <boost/geometry/core/access.hpp>
 #include <boost/geometry/core/exterior_ring.hpp>
 #include <boost/geometry/core/interior_rings.hpp>
 #include <boost/geometry/core/mutable_range.hpp>
@@ -56,18 +57,30 @@ struct polygon_clear
     {
         traits::clear
             <
-                typename std::remove_reference
+                std::remove_reference_t
                     <
                         typename traits::interior_mutable_type<Polygon>::type
-                    >::type
+                    >
             >::apply(interior_rings(polygon));
         traits::clear
             <
-                typename std::remove_reference
+                std::remove_reference_t
                     <
                         typename traits::ring_mutable_type<Polygon>::type
-                    >::type
+                    >
             >::apply(exterior_ring(polygon));
+    }
+};
+
+template <typename PolyhedralSurface>
+struct polyhedral_surface_clear
+{
+    static inline void apply(PolyhedralSurface& polyhedral_surface)
+    {
+        traits::clear
+            <
+                typename std::remove_reference<PolyhedralSurface>::type
+            >::apply(polyhedral_surface);
     }
 };
 
@@ -90,7 +103,7 @@ namespace dispatch
 template
 <
     typename Geometry,
-    typename Tag = typename tag_cast<typename tag<Geometry>::type, multi_tag>::type
+    typename Tag = tag_cast_t<tag_t<Geometry>, multi_tag>
 >
 struct clear: not_implemented<Tag>
 {};
@@ -121,6 +134,11 @@ struct clear<Geometry, ring_tag>
     : detail::clear::collection_clear<Geometry>
 {};
 
+// Clear for Polyhedral surface
+template <typename Geometry>
+struct clear<Geometry, polyhedral_surface_tag>
+    : detail::clear::polyhedral_surface_clear<Geometry>
+{};
 
 // Polygon can (indirectly) use std for clear
 template <typename Polygon>

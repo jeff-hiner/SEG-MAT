@@ -23,7 +23,7 @@
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 
 #include <CGAL/AABB_tree.h>
-#include <CGAL/AABB_traits.h>
+#include <CGAL/AABB_traits_3.h>
 #include <CGAL/boost/graph/helpers.h>
 
 namespace CGAL {
@@ -81,7 +81,7 @@ class Side_of_triangle_mesh
   struct AABB_tree_default {
     typedef CGAL::AABB_face_graph_triangle_primitive<TriangleMesh_,
                                                      VertexPointMap__> Primitive;
-    typedef CGAL::AABB_traits<GeomTraits_, Primitive> Traits;
+    typedef CGAL::AABB_traits_3<GeomTraits_, Primitive> Traits;
     typedef CGAL::AABB_tree<Traits> type;
   };
   typedef typename Default::Lazy_get<AABBTree,
@@ -99,7 +99,7 @@ class Side_of_triangle_mesh
   typename GeomTraits::Construct_ray_3     ray_functor;
   typename GeomTraits::Construct_vector_3  vector_functor;
   const TriangleMesh* tm_ptr;
-  boost::optional<VertexPointMap> opt_vpm;
+  std::optional<VertexPointMap> opt_vpm;
   bool own_tree;
   CGAL::Bbox_3 box;
 #ifdef CGAL_HAS_THREADS
@@ -141,7 +141,6 @@ public:
 #endif
   {
     CGAL_assertion(CGAL::is_triangle_mesh(tmesh));
-    CGAL_assertion(CGAL::is_closed(tmesh));
     box = Polygon_mesh_processing::bbox(tmesh, parameters::vertex_point_map(vpmap));
   }
 
@@ -165,12 +164,13 @@ public:
   * @param tree a \cgal `AABB_tree` with `AABB_face_graph_triangle_primitive` as `Primitive` type
   * @param gt an instance of the geometric traits class
   *
-  * @pre `CGAL::is_closed(tmesh) && CGAL::is_triangle_mesh(tmesh)`
+  * @pre `tree` contains a set of triangle faces representing a closed surface mesh
   */
   Side_of_triangle_mesh(const AABB_tree& tree,
                         const GeomTraits& gt = GeomTraits())
   : ray_functor(gt.construct_ray_3_object())
   , vector_functor(gt.construct_vector_3_object())
+  , tm_ptr(nullptr)
   , own_tree(false)
 #ifdef CGAL_HAS_THREADS
   , atomic_tree_ptr(&tree)
@@ -182,9 +182,37 @@ public:
   }
 
   /**
-  * Constructor moving an instance of Side_of_triangle_mesh to a new memory
+  * Constructor that takes a pre-built \cgal `AABB_tree`
+  * of the triangulated surface mesh primitives, and moves it.
+  *
+  * @param tree a \cgal `AABB_tree` with `AABB_face_graph_triangle_primitive` as `Primitive` type
+  * @param gt an instance of the geometric traits class
+  *
+  * @pre `tree` contains a set of triangle faces representing a closed surface mesh
+  */
+  Side_of_triangle_mesh(AABB_tree&& tree,
+                        const GeomTraits& gt = GeomTraits())
+  : ray_functor(gt.construct_ray_3_object())
+  , vector_functor(gt.construct_vector_3_object())
+  , tm_ptr(nullptr)
+  , own_tree(true)
+#ifdef CGAL_HAS_THREADS
+  , atomic_tree_ptr(new AABB_tree(std::forward<AABB_tree>(tree)))
+#else
+  , tree_ptr(new AABB_tree(std::forward<AABB_tree>(tree)))
+#endif
+  {
+#ifdef CGAL_HAS_THREADS
+    box = atomic_tree_ptr.load()->bbox();
+#else
+    box = tree_ptr->bbox();
+#endif
+  }
+
+  /**
+  * Constructor moving an instance of `Side_of_triangle_mesh` to a new memory
   * location with minimal memory copy.
-  * @param other The instance to be moved
+  * @param other the instance to be moved
   */
   Side_of_triangle_mesh(Side_of_triangle_mesh&& other)
   {
@@ -202,10 +230,10 @@ public:
 
 public:
   /**
-  * Assign operator moving an instance of Side_of_triangle_mesh to this
+  * Assign operator moving an instance of `Side_of_triangle_mesh` to this
   * location with minimal memory copy.
-  * @param other The instance to be moved
-  * @return A reference to this
+  * @param other the instance to be moved
+  * @return a reference to `this`
   */
   Side_of_triangle_mesh& operator=(Side_of_triangle_mesh&& other)
   {
@@ -233,6 +261,8 @@ public:
    */
   Bounded_side operator()(const Point& point) const
   {
+    CGAL_assertion(tm_ptr == nullptr || CGAL::is_closed(*tm_ptr));
+
     if(point.x() < box.xmin()
        || point.x() > box.xmax()
        || point.y() < box.ymin()
@@ -255,7 +285,7 @@ public:
         CGAL_SCOPED_LOCK(tree_mutex);
         tree_ptr = const_cast<AABB_tree_*>(atomic_tree_ptr.load(std::memory_order_relaxed));
 #endif
-        CGAL_assertion(tm_ptr != nullptr && opt_vpm!=boost::none);
+        CGAL_assertion(tm_ptr != nullptr && opt_vpm!=std::nullopt);
         if (tree_ptr==nullptr)
         {
           tree_ptr = new AABB_tree(faces(*tm_ptr).first,
@@ -276,6 +306,8 @@ public:
   template <class K2>
   Bounded_side operator()(const typename K2::Point_3& point, const K2& k2) const
   {
+    CGAL_assertion(tm_ptr == nullptr || CGAL::is_closed(*tm_ptr));
+
     if(point.x() < box.xmin()
        || point.x() > box.xmax()
        || point.y() < box.ymin()
@@ -297,7 +329,7 @@ public:
       CGAL_SCOPED_LOCK(tree_mutex);
       tree_ptr = const_cast<AABB_tree_*>(atomic_tree_ptr.load(std::memory_order_relaxed));
 #endif
-      CGAL_assertion(tm_ptr != nullptr && opt_vpm!=boost::none);
+      CGAL_assertion(tm_ptr != nullptr && opt_vpm!=std::nullopt);
       if (tree_ptr==nullptr)
       {
         tree_ptr = new AABB_tree(faces(*tm_ptr).first,

@@ -128,13 +128,13 @@ namespace Surface_mesh_parameterization {
 /// When \f$\lambda\f$ is non-null, the border does not need to be parameterized and
 /// a random vertex is pinned.
 ///
-/// If flips are present in the initial parameterization, a post-processing step
+/// If flips are present in the initial parameterization, a postprocessing step
 /// is applied using `CGAL::Surface_mesh_parameterization::MVC_post_processor_3<TriangleMesh_, SolverTraits_>`
 /// to attempt to obtain a valid final embedding.
 ///
 /// A one-to-one mapping is *not* guaranteed.
 ///
-/// \cgalModels `Parameterizer_3`
+/// \cgalModels{Parameterizer_3}
 ///
 /// \tparam TriangleMesh_ must be a model of `FaceGraph`.
 ///
@@ -176,7 +176,7 @@ public:
     Two_vertices_parameterizer_3<TriangleMesh_> >::type       Border_parameterizer;
 
   #if !defined(CGAL_EIGEN3_ENABLED)
-  CGAL_static_assertion_msg(!(std::is_same<SolverTraits_, Default>::value),
+  static_assert(!(std::is_same<SolverTraits_, Default>::value),
                             "Error: You must either provide 'SolverTraits_' or link CGAL with the Eigen library");
   #endif
 
@@ -458,7 +458,7 @@ private:
                                       const Faces_vector& faces,
                                       Cot_map ctmap) const
   {
-    // Since we loop faces, we are implicitely defining the weight of border halfedges as 0...
+    // Since we loop faces, we are implicitly defining the weight of border halfedges as 0...
     for(face_descriptor fd : faces) {
       halfedge_descriptor hd = halfedge(fd, mesh), hdb = hd;
 

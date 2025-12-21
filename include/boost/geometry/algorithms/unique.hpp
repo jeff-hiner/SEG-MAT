@@ -24,7 +24,6 @@
 #include <boost/range/begin.hpp>
 #include <boost/range/end.hpp>
 
-#include <boost/geometry/algorithms/detail/interior_iterator.hpp>
 #include <boost/geometry/core/interior_rings.hpp>
 #include <boost/geometry/core/mutable_range.hpp>
 #include <boost/geometry/core/tags.hpp>
@@ -46,7 +45,7 @@ struct range_unique
     template <typename Range, typename ComparePolicy>
     static inline void apply(Range& range, ComparePolicy const& policy)
     {
-        typename boost::range_iterator<Range>::type it
+        auto it
             = std::unique
                 (
                     boost::begin(range),
@@ -66,11 +65,9 @@ struct polygon_unique
     {
         range_unique::apply(exterior_ring(polygon), policy);
 
-        typename interior_return_type<Polygon>::type
-            rings = interior_rings(polygon);
+        auto&& rings = interior_rings(polygon);
 
-        for (typename detail::interior_iterator<Polygon>::type
-                it = boost::begin(rings); it != boost::end(rings); ++it)
+        for (auto it = boost::begin(rings); it != boost::end(rings); ++it)
         {
             range_unique::apply(*it, policy);
         }
@@ -84,10 +81,7 @@ struct multi_unique
     template <typename MultiGeometry, typename ComparePolicy>
     static inline void apply(MultiGeometry& multi, ComparePolicy const& compare)
     {
-        for (typename boost::range_iterator<MultiGeometry>::type
-                it = boost::begin(multi);
-            it != boost::end(multi);
-            ++it)
+        for (auto it = boost::begin(multi); it != boost::end(multi); ++it)
         {
             Policy::apply(*it, compare);
         }
@@ -108,7 +102,7 @@ namespace dispatch
 template
 <
     typename Geometry,
-    typename Tag = typename tag<Geometry>::type
+    typename Tag = tag_t<Geometry>
 >
 struct unique
 {
@@ -173,10 +167,10 @@ inline void unique(Geometry& geometry)
     concepts::check<Geometry>();
 
     // Default strategy is the default point-comparison policy
-    typedef geometry::equal_to
+    using policy = geometry::equal_to
         <
-            typename geometry::point_type<Geometry>::type
-        > policy;
+            geometry::point_type_t<Geometry>
+        >;
 
 
     dispatch::unique<Geometry>::apply(geometry, policy());

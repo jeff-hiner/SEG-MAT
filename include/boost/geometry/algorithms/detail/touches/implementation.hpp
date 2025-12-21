@@ -5,9 +5,9 @@
 // Copyright (c) 2009-2015 Mateusz Loskot, London, UK.
 // Copyright (c) 2013-2022 Adam Wulkiewicz, Lodz, Poland.
 
-// This file was modified by Oracle on 2013-2022.
-// Modifications copyright (c) 2013-2022, Oracle and/or its affiliates.
-
+// This file was modified by Oracle on 2013-2024.
+// Modifications copyright (c) 2013-2024, Oracle and/or its affiliates.
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
@@ -39,8 +39,6 @@
 
 #include <boost/geometry/geometries/helper_geometry.hpp>
 
-#include <boost/geometry/policies/robustness/no_rescale_policy.hpp>
-
 #include <boost/geometry/strategies/relate/cartesian.hpp>
 #include <boost/geometry/strategies/relate/geographic.hpp>
 #include <boost/geometry/strategies/relate/spherical.hpp>
@@ -67,8 +65,8 @@ struct box_box_loop
     template <typename Box1, typename Box2>
     static inline bool apply(Box1 const& b1, Box2 const& b2, bool & touch)
     {
-        typedef typename coordinate_type<Box1>::type coordinate_type1;
-        typedef typename coordinate_type<Box2>::type coordinate_type2;
+        using coordinate_type1 = coordinate_type_t<Box1>;
+        using coordinate_type2 = coordinate_type_t<Box2>;
 
         coordinate_type1 const& min1 = get<min_corner, Dimension>(b1);
         coordinate_type1 const& max1 = get<max_corner, Dimension>(b1);
@@ -87,7 +85,7 @@ struct box_box_loop
         {
             touch = true;
         }
-        
+
         return box_box_loop
                 <
                     Dimension + 1,
@@ -116,8 +114,8 @@ struct box_box
     {
         BOOST_STATIC_ASSERT((std::is_same
                                 <
-                                    typename geometry::coordinate_system<Box1>::type,
-                                    typename geometry::coordinate_system<Box2>::type
+                                    geometry::coordinate_system_t<Box1>,
+                                    geometry::coordinate_system_t<Box2>
                                 >::value
                            ));
         assert_dimension_equal<Box1, Box2>();
@@ -157,19 +155,20 @@ struct areal_interrupt_policy
     inline bool apply(Range const& range)
     {
         // if already rejected (temp workaround?)
-        if ( found_not_touch )
-            return true;
-
-        typedef typename boost::range_iterator<Range const>::type iterator;
-        for ( iterator it = boost::begin(range) ; it != boost::end(range) ; ++it )
+        if (found_not_touch)
         {
-            if ( it->has(overlay::operation_intersection) )
+            return true;
+        }
+
+        for (auto it = boost::begin(range); it != boost::end(range); ++it)
+        {
+            if (it->has(overlay::operation_intersection))
             {
                 found_not_touch = true;
                 return true;
             }
 
-            switch(it->method)
+            switch (it->method)
             {
                 case overlay::method_crosses:
                     found_not_touch = true;
@@ -218,7 +217,7 @@ inline bool point_on_border_within(Geometry1 const& geometry1,
                                    Geometry2 const& geometry2,
                                    Strategy const& strategy)
 {
-    using point_type = typename geometry::point_type<Geometry1>::type;
+    using point_type = geometry::point_type_t<Geometry1>;
     typename helper_geometry<point_type>::type pt;
     return geometry::point_on_border(pt, geometry1)
         && geometry::within(pt, geometry2, strategy);
@@ -243,7 +242,7 @@ struct areal_areal
                              Geometry2 const& geometry2,
                              Strategy const& strategy)
     {
-        using point_type = typename geometry::point_type<Geometry1>::type;
+        using point_type = geometry::point_type_t<Geometry1>;
         using mutable_point_type = typename helper_geometry<point_type>::type;
         using turn_info = detail::overlay::turn_info<mutable_point_type>;
 
@@ -254,7 +253,7 @@ struct areal_areal
                 detail::overlay::do_reverse<geometry::point_order<Geometry1>::value>::value,
                 detail::overlay::do_reverse<geometry::point_order<Geometry2>::value>::value,
                 detail::overlay::assign_null_policy
-            >(geometry1, geometry2, strategy, detail::no_rescale_policy(), turns, policy);
+            >(geometry1, geometry2, strategy, turns, policy);
 
         return policy.result()
             && ! geometry::detail::touches::rings_containing(geometry1, geometry2, strategy)
@@ -506,17 +505,17 @@ struct self_touches
     {
         concepts::check<Geometry const>();
 
-        typedef typename strategies::relate::services::default_strategy
+        using strategy_type = typename strategies::relate::services::default_strategy
             <
                 Geometry, Geometry
-            >::type strategy_type;
-        typedef typename geometry::point_type<Geometry>::type point_type;
-        typedef detail::overlay::turn_info<point_type> turn_info;
+            >::type;
+        using point_type = geometry::point_type_t<Geometry>;
+        using turn_info = detail::overlay::turn_info<point_type>;
 
-        typedef detail::overlay::get_turn_info
+        using policy_type = detail::overlay::get_turn_info
             <
                 detail::overlay::assign_null_policy
-            > policy_type;
+            >;
 
         std::deque<turn_info> turns;
         detail::touches::areal_interrupt_policy policy;
@@ -525,7 +524,7 @@ struct self_touches
         detail::self_get_turn_points::get_turns
             <
                 false, policy_type
-            >::apply(geometry, strategy, detail::no_rescale_policy(),
+            >::apply(geometry, strategy,
                      turns, policy, 0, true);
 
         return policy.result();

@@ -4,8 +4,9 @@
 // Copyright (c) 2008-2014 Bruno Lalande, Paris, France.
 // Copyright (c) 2009-2014 Mateusz Loskot, London, UK.
 
-// This file was modified by Oracle on 2014-2021.
-// Modifications copyright (c) 2014-2021, Oracle and/or its affiliates.
+// This file was modified by Oracle on 2014-2023.
+// Modifications copyright (c) 2014-2023, Oracle and/or its affiliates.
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
@@ -28,7 +29,6 @@
 // #include <boost/geometry/algorithms/detail/throw_on_empty_input.hpp>
 #include <boost/geometry/algorithms/detail/visit.hpp>
 
-#include <boost/geometry/core/cs.hpp>
 #include <boost/geometry/core/closure.hpp>
 #include <boost/geometry/core/tags.hpp>
 #include <boost/geometry/core/visit.hpp>
@@ -51,7 +51,7 @@ namespace dispatch
 {
 
 // Default perimeter is 0.0, specializations implement calculated values
-template <typename Geometry, typename Tag = typename tag<Geometry>::type>
+template <typename Geometry, typename Tag = tag_t<Geometry>>
 struct perimeter : detail::calculate_null
 {
     typedef typename default_length_result<Geometry>::type return_type;
@@ -75,12 +75,12 @@ struct perimeter<Geometry, ring_tag>
 template <typename Polygon>
 struct perimeter<Polygon, polygon_tag> : detail::calculate_polygon_sum
 {
-    typedef typename default_length_result<Polygon>::type return_type;
-    typedef detail::length::range_length
+    using return_type = typename default_length_result<Polygon>::type;
+    using policy = detail::length::range_length
                 <
-                    typename ring_type<Polygon>::type,
+                    ring_type_t<Polygon>,
                     closure<Polygon>::value
-                > policy;
+                >;
 
     template <typename Strategy>
     static inline return_type apply(Polygon const& polygon, Strategy const& strategy)
@@ -163,7 +163,7 @@ struct perimeter<default_strategy, false>
 
 namespace resolve_dynamic {
 
-template <typename Geometry, typename Tag = typename geometry::tag<Geometry>::type>
+template <typename Geometry, typename Tag = geometry::tag_t<Geometry>>
 struct perimeter
 {
     template <typename Strategy>

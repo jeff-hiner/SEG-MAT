@@ -13,7 +13,7 @@
 #ifndef CGAL_DELAUNAY_FACE_BASE_2_H
 #define CGAL_DELAUNAY_FACE_BASE_2_H
 
-#include <CGAL/license/Mesh_2.h>
+#include <CGAL/license/Triangulation_2.h>
 
 
 #include <CGAL/Constrained_Delaunay_triangulation_face_base_2.h>
@@ -78,7 +78,7 @@ public:
 
   void set_time_stamp(const std::size_t& ts) { time_stamp_ = ts; }
 
-  std::size_t time_stamp_;
+  std::size_t time_stamp_ = std::size_t(-2);
 };
 
 } // namespace CGAL

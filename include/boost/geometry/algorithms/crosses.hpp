@@ -48,8 +48,8 @@ template
 <
     typename Geometry1,
     typename Geometry2,
-    typename Tag1 = typename tag<Geometry1>::type,
-    typename Tag2 = typename tag<Geometry2>::type
+    typename Tag1 = tag_t<Geometry1>,
+    typename Tag2 = tag_t<Geometry2>
 >
 struct crosses
     : detail::relate::relate_impl
@@ -215,8 +215,8 @@ namespace resolve_dynamic
 template
 <
     typename Geometry1, typename Geometry2,
-    typename Tag1 = typename geometry::tag<Geometry1>::type,
-    typename Tag2 = typename geometry::tag<Geometry2>::type
+    typename Tag1 = geometry::tag_t<Geometry1>,
+    typename Tag2 = geometry::tag_t<Geometry2>
 >
 struct crosses
 {
@@ -231,7 +231,7 @@ struct crosses
             >::apply(geometry1, geometry2, strategy);
     }
 };
-    
+
 
 template <typename DynamicGeometry1, typename Geometry2, typename Tag2>
 struct crosses<DynamicGeometry1, Geometry2, dynamic_geometry_tag, Tag2>
@@ -295,10 +295,10 @@ struct crosses<DynamicGeometry1, DynamicGeometry2, dynamic_geometry_tag, dynamic
     }
 };
 
-    
+
 } // namespace resolve_dynamic
-    
-    
+
+
 /*!
 \brief \brief_check2{crosses}
 \ingroup crosses

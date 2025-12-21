@@ -334,7 +334,7 @@ public:
   template < class InputIterator >
   std::ptrdiff_t insert(InputIterator first, InputIterator last,
                         std::enable_if_t<
-                          boost::is_convertible<
+                          std::is_convertible<
                               typename std::iterator_traits<InputIterator>::value_type,
                               Point
                           >::value
@@ -480,7 +480,7 @@ public:
   template < class InputIterator >
   std::ptrdiff_t insert(InputIterator first, InputIterator last,
                         std::enable_if_t<
-                          boost::is_convertible<
+                          std::is_convertible<
                             typename std::iterator_traits<InputIterator>::value_type,
                             std::pair<Point, typename internal::Info_check<
                                                typename Triangulation_data_structure::Vertex>::type>
@@ -494,10 +494,8 @@ public:
   insert(boost::zip_iterator< boost::tuple<InputIterator_1,InputIterator_2> > first,
           boost::zip_iterator< boost::tuple<InputIterator_1,InputIterator_2> > last,
           std::enable_if_t<
-            boost::mpl::and_<
-              boost::is_convertible< typename std::iterator_traits<InputIterator_1>::value_type, Point >,
-              boost::is_convertible< typename std::iterator_traits<InputIterator_2>::value_type, typename internal::Info_check<typename Triangulation_data_structure::Vertex>::type >
-            >::value
+              std::is_convertible_v< typename std::iterator_traits<InputIterator_1>::value_type, Point > &&
+              std::is_convertible_v< typename std::iterator_traits<InputIterator_2>::value_type, typename internal::Info_check<typename Triangulation_data_structure::Vertex>::type >
           >* =nullptr)
   {
     return insert_with_info< boost::tuple<Point, typename internal::Info_check<
@@ -1544,7 +1542,7 @@ side_of_circle(Cell_handle c, int i, const Point& p, bool perturb) const
   if(dimension() == 2)
   {
     CGAL_precondition(i == 3);
-    // the triangulation is supposed to be valid, ie the facet
+    // the triangulation is supposed to be valid, i.e. the facet
     // with vertices 0 1 2 in this order is positively oriented
     if(! c->has_vertex(infinite_vertex(), i3))
       return coplanar_side_of_bounded_circle(c->vertex(0)->point(),

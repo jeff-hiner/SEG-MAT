@@ -62,8 +62,8 @@ namespace dispatch {
 
 template <typename Geometry1,
           typename Geometry2,
-          typename Tag1 = typename geometry::tag<Geometry1>::type,
-          typename Tag2 = typename geometry::tag<Geometry2>::type,
+          typename Tag1 = geometry::tag_t<Geometry1>,
+          typename Tag2 = geometry::tag_t<Geometry2>,
           int TopDim1 = geometry::topological_dimension<Geometry1>::value,
           int TopDim2 = geometry::topological_dimension<Geometry2>::value,
           bool IsGeneric = detail::relate::is_generic<Geometry1, Geometry2>::value
@@ -214,7 +214,7 @@ struct relate<default_strategy, false>
                 Geometry1,
                 Geometry2
             >::type strategy_type;
-        
+
         dispatch::relate
             <
                 Geometry1,
@@ -231,8 +231,8 @@ namespace resolve_dynamic
 template
 <
     typename Geometry1, typename Geometry2,
-    typename Tag1 = typename geometry::tag<Geometry1>::type,
-    typename Tag2 = typename geometry::tag<Geometry2>::type
+    typename Tag1 = geometry::tag_t<Geometry1>,
+    typename Tag2 = geometry::tag_t<Geometry2>
 >
 struct relate
 {

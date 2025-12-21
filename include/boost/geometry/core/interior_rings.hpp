@@ -4,8 +4,9 @@
 // Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
 // Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
 
-// This file was modified by Oracle on 2020.
-// Modifications copyright (c) 2020, Oracle and/or its affiliates.
+// This file was modified by Oracle on 2020-2023.
+// Modifications copyright (c) 2020-2023, Oracle and/or its affiliates.
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
@@ -18,7 +19,6 @@
 #ifndef BOOST_GEOMETRY_CORE_INTERIOR_RINGS_HPP
 #define BOOST_GEOMETRY_CORE_INTERIOR_RINGS_HPP
 
-#include <cstddef>
 #include <type_traits>
 
 #include <boost/range/value_type.hpp>
@@ -90,11 +90,11 @@ struct interior_rings<polygon_tag, Polygon>
 template <typename MultiPolygon>
 struct interior_type<multi_polygon_tag, MultiPolygon>
 {
-    typedef typename core_dispatch::interior_type
+    using type = typename core_dispatch::interior_type
         <
             polygon_tag,
             typename boost::range_value<MultiPolygon>::type
-        >::type type;
+        >::type;
 };
 
 
@@ -113,11 +113,11 @@ struct interior_type<multi_polygon_tag, MultiPolygon>
 */
 
 template <typename Polygon>
-inline typename interior_return_type<Polygon>::type interior_rings(Polygon& polygon)
+inline interior_return_type_t<Polygon> interior_rings(Polygon& polygon)
 {
     return core_dispatch::interior_rings
         <
-            typename tag<Polygon>::type,
+            tag_t<Polygon>,
             Polygon
         >::apply(polygon);
 }
@@ -134,12 +134,11 @@ inline typename interior_return_type<Polygon>::type interior_rings(Polygon& poly
 \qbk{distinguish,const version}
 */
 template <typename Polygon>
-inline typename interior_return_type<Polygon const>::type interior_rings(
-            Polygon const& polygon)
+inline interior_return_type_t<Polygon const> interior_rings(Polygon const& polygon)
 {
     return core_dispatch::interior_rings
         <
-            typename tag<Polygon>::type,
+            tag_t<Polygon>,
             Polygon const
         >::apply(polygon);
 }

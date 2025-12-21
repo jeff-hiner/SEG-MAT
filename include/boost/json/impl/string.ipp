@@ -206,6 +206,40 @@ shrink_to_fit()
 
 //----------------------------------------------------------
 //
+// Access
+//
+//----------------------------------------------------------
+
+system::result<char&>
+string::try_at(std::size_t pos) noexcept
+{
+    if( pos < size() )
+        return impl_.data()[pos];
+
+    system::error_code ec;
+    BOOST_JSON_FAIL(ec, error::out_of_range);
+    return ec;
+}
+
+system::result<char const&>
+string::try_at(std::size_t pos) const noexcept
+{
+    if( pos < size() )
+        return impl_.data()[pos];
+
+    system::error_code ec;
+    BOOST_JSON_FAIL(ec, error::out_of_range);
+    return ec;
+}
+
+char const&
+string::at(std::size_t pos, source_location const& loc) const
+{
+    return try_at(pos).value(loc);
+}
+
+//----------------------------------------------------------
+//
 // Operations
 //
 //----------------------------------------------------------
@@ -317,7 +351,10 @@ erase(
     size_type count)
 {
     if(pos > impl_.size())
-        detail::throw_out_of_range();
+    {
+        BOOST_STATIC_CONSTEXPR source_location loc = BOOST_CURRENT_LOCATION;
+        detail::throw_system_error( error::out_of_range, &loc );
+    }
     if( count > impl_.size() - pos)
         count = impl_.size() - pos;
     std::char_traits<char>::move(

@@ -19,8 +19,8 @@
 #include <CGAL/Default.h>
 #include <CGAL/Named_function_parameters.h>
 #include <CGAL/property_map.h>
+#include <CGAL/Dimension.h>
 
-#include <boost/mpl/if.hpp>
 #include <boost/mpl/has_xxx.hpp>
 
 #include <fstream>
@@ -43,14 +43,13 @@ class property_map_selector
 {
 public:
   typedef typename graph_has_property<PolygonMesh, PropertyTag>::type Has_internal_pmap;
-  typedef typename boost::mpl::if_c<Has_internal_pmap::value,
-                                    typename boost::property_map<PolygonMesh, PropertyTag>::type,
-                                    typename boost::cgal_no_property::type
-                                    >::type type;
-  typedef typename boost::mpl::if_c<Has_internal_pmap::value,
-                                    typename boost::property_map<PolygonMesh, PropertyTag>::const_type,
-                                    typename boost::cgal_no_property::const_type
-                                    >::type const_type;
+  typedef std::conditional_t<Has_internal_pmap::value,
+                             typename boost::property_map<PolygonMesh, PropertyTag>::type,
+                             typename boost::cgal_no_property::type> type;
+  typedef std::conditional_t<Has_internal_pmap::value,
+                             typename boost::property_map<PolygonMesh, PropertyTag>::const_type,
+                             typename boost::cgal_no_property::const_type
+                             > const_type;
 
   type get_pmap(const PropertyTag& p, PolygonMesh& pmesh)
   {
@@ -209,10 +208,10 @@ struct GetGeomTraits_impl<PolygonMesh, internal_np::Param_not_found, NamedParame
 
   struct Fake_GT {}; // to be used if there is no internal vertex_point_map in PolygonMesh
 
-  typedef typename boost::mpl::if_c<Has_internal_pmap::value ||
-                                    !std::is_same<internal_np::Param_not_found, NP_vpm>::value,
-                                    typename GetK<PolygonMesh, NamedParametersVPM>::Kernel,
-                                    Fake_GT>::type type;
+  typedef std::conditional_t<Has_internal_pmap::value ||
+                             !std::is_same<internal_np::Param_not_found, NP_vpm>::value,
+                             typename GetK<PolygonMesh, NamedParametersVPM>::Kernel,
+                             Fake_GT> type;
 };
 
 template <typename PolygonMesh,
@@ -226,6 +225,32 @@ struct GetGeomTraits
   typedef typename GetGeomTraits_impl<PolygonMesh,
                                           GT_from_NP,
                                           NamedParametersVPM>::type type;
+};
+
+namespace internal {
+// Similar helper for polygon soups
+template <typename PointRange, typename PolygonRange>
+struct Polygon_types
+{
+  typedef typename boost::range_value<PointRange>::type                             Point_3;
+  typedef typename boost::range_value<PolygonRange>::type                           Polygon_3;
+
+  typedef typename boost::range_iterator<Polygon_3>::type                           V_ID_iterator;
+  typedef typename std::iterator_traits<V_ID_iterator>::value_type                  V_ID;
+  typedef typename std::vector<Polygon_3>::size_type                                P_ID;
+};
+}
+
+template <typename PointRange, typename PolygonRange, typename NamedParameters>
+struct GetPolygonGeomTraits
+{
+  typedef typename internal_np::Lookup_named_param_def <
+                     internal_np::geom_traits_t,
+                     NamedParameters,
+                     typename CGAL::Kernel_traits<
+                       typename internal::Polygon_types<
+                         PointRange, PolygonRange>::Point_3 >::type
+                   > ::type                                                         type;
 };
 
 // Define the following structs:
@@ -358,6 +383,22 @@ struct GetPolygonSoupGeomTraits
                    > ::type                                                         type;
 };
 
+namespace internal {
+template <class Point, int d = CGAL::Ambient_dimension<Point>::value>
+struct Vector_matching_point {
+  typedef typename Kernel_traits<Point>::Kernel::Vector_d type;
+};
+
+template <class Point>
+struct Vector_matching_point<Point, 2> {
+  typedef typename Kernel_traits<Point>::Kernel::Vector_2 type;
+};
+
+template <class Point>
+struct Vector_matching_point<Point, 3> {
+  typedef typename Kernel_traits<Point>::Kernel::Vector_3 type;
+};
+}
 
 template <class PointRange, class NamedParameters, class PointMap = Default, class NormalMap = Default>
 struct Point_set_processing_3_np_helper
@@ -382,7 +423,7 @@ struct Point_set_processing_3_np_helper
 
   typedef typename Geom_traits::FT FT; // public
 
-  typedef Constant_property_map<Value_type, typename Geom_traits::Vector_3> DummyNormalMap;
+  typedef Constant_property_map<Value_type, typename internal::Vector_matching_point<Point>::type> DummyNormalMap;
   typedef typename Default::Get<NormalMap, DummyNormalMap>::type DefaultNMap;
 
   typedef typename internal_np::Lookup_named_param_def<

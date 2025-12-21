@@ -47,7 +47,7 @@ template
 <
     typename Geometry,
     typename SubGeometry,
-    typename Tag = typename tag<Geometry>::type,
+    typename Tag = tag_t<Geometry>,
     bool IsSubDynamicOrCollection = util::is_dynamic_geometry<SubGeometry>::value
                                  || util::is_geometry_collection<SubGeometry>::value
 >
@@ -113,8 +113,8 @@ struct GeometryCollection
 
     BOOST_CONCEPT_USAGE(GeometryCollection)
     {
-        Geometry* gc = nullptr;        
-        traits::clear<Geometry>::apply(*gc);        
+        Geometry* gc = nullptr;
+        traits::clear<Geometry>::apply(*gc);
         traits::iter_visit<Geometry>::apply([](auto &&) {}, boost::begin(*gc));
     }
 #endif // DOXYGEN_NO_CONCEPT_MEMBERS

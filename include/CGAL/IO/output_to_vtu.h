@@ -20,7 +20,7 @@
 #include <CGAL/IO/io.h>
 #include <CGAL/IO/VTK.h>
 
-#include <boost/variant.hpp>
+#include <variant>
 
 #include <iostream>
 #include <vector>
@@ -268,12 +268,16 @@ write_attributes(std::ostream& os,
 }
 
 enum VTU_ATTRIBUTE_TYPE{
-  DOUBLE=0,
+  INTEGER = 0,
+  DOUBLE,
   UNIT_8,
   SIZE_TYPE
 };
 
-typedef boost::variant<const std::vector<double>*, const std::vector<uint8_t>*, const std::vector<std::size_t>* > Vtu_attributes;
+typedef std::variant<const std::vector<int>*,
+                     const std::vector<double>*,
+                     const std::vector<uint8_t>*,
+                     const std::vector<std::size_t>* > Vtu_attributes;
 
 template <class C3T3>
 void output_to_vtu_with_attributes(std::ostream& os,
@@ -284,6 +288,7 @@ void output_to_vtu_with_attributes(std::ostream& os,
   //CGAL_assertion(attributes.size() == attribute_types.size());
   typedef typename C3T3::Triangulation Tr;
   typedef typename Tr::Vertex_handle Vertex_handle;
+
   const Tr& tr = c3t3.triangulation();
   std::map<Vertex_handle, std::size_t> V;
   //write header
@@ -314,15 +319,18 @@ void output_to_vtu_with_attributes(std::ostream& os,
   os << "    <CellData Scalars=\""<<attributes.front().first<<"\">\n";
   for(std::size_t i = 0; i< attributes.size(); ++i)
   {
-    switch(attributes[i].second.which()){
+    switch(attributes[i].second.index()){
     case 0:
-      write_attribute_tag(os,attributes[i].first, *boost::get<const std::vector<double>* >(attributes[i].second), binary,offset);
+      write_attribute_tag(os, attributes[i].first, *std::get<const std::vector<int>* >(attributes[i].second), binary, offset);
       break;
     case 1:
-      write_attribute_tag(os,attributes[i].first, *boost::get<const std::vector<uint8_t>* >(attributes[i].second), binary,offset);
+      write_attribute_tag(os,attributes[i].first, *std::get<const std::vector<double>* >(attributes[i].second), binary,offset);
+      break;
+    case 2:
+      write_attribute_tag(os,attributes[i].first, *std::get<const std::vector<uint8_t>* >(attributes[i].second), binary,offset);
       break;
     default:
-      write_attribute_tag(os,attributes[i].first, *boost::get<const std::vector<std::size_t>* >(attributes[i].second), binary,offset);
+      write_attribute_tag(os,attributes[i].first, *std::get<const std::vector<std::size_t>* >(attributes[i].second), binary,offset);
       break;
     }
   }
@@ -334,15 +342,18 @@ void output_to_vtu_with_attributes(std::ostream& os,
     write_c3t3_points(os,tr,V); // fills V if the mode is BINARY
     write_cells(os,c3t3,V);
     for(std::size_t i = 0; i< attributes.size(); ++i) {
-      switch(attributes[i].second.which()){
+      switch(attributes[i].second.index()){
       case 0:
-        write_attributes(os, *boost::get<const std::vector<double>* >(attributes[i].second));
+        write_attributes(os, *std::get<const std::vector<int>* >(attributes[i].second));
         break;
       case 1:
-        write_attributes(os, *boost::get<const std::vector<uint8_t>* >(attributes[i].second));
+        write_attributes(os, *std::get<const std::vector<double>* >(attributes[i].second));
+        break;
+      case 2:
+        write_attributes(os, *std::get<const std::vector<uint8_t>* >(attributes[i].second));
         break;
       default:
-        write_attributes(os, *boost::get<const std::vector<std::size_t>* >(attributes[i].second));
+        write_attributes(os, *std::get<const std::vector<std::size_t>* >(attributes[i].second));
         break;
       }
     }
@@ -371,14 +382,13 @@ void output_to_vtu(std::ostream& os,
                const C3T3& c3t3,
                Mode mode = BINARY)
 {
-  typedef typename C3T3::Cells_in_complex_iterator Cell_iterator;
-  std::vector<double> mids;
-  for( Cell_iterator cit = c3t3.cells_in_complex_begin() ;
-       cit != c3t3.cells_in_complex_end() ;
-       ++cit )
+  typedef typename C3T3::Cell_handle Cell_handle;
+  typedef typename C3T3::Subdomain_index Subdomain_index;
+
+  std::vector<Subdomain_index> mids;
+  for( Cell_handle c : c3t3.cells_in_complex())
   {
-    double v = cit->subdomain_index();
-    mids.push_back(v);
+    mids.push_back(c->subdomain_index());
   }
 
   std::vector<std::pair<const char*, internal::Vtu_attributes > > atts;

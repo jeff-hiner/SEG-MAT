@@ -1,6 +1,7 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
 
 // Copyright (c) 2020-2021 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2023 Adam Wulkiewicz, Lodz, Poland.
 
 // This file was modified by Oracle on 2020-2022.
 // Modifications copyright (c) 2020-2022, Oracle and/or its affiliates.
@@ -14,8 +15,10 @@
 #define BOOST_GEOMETRY_ALGORITHMS_DETAIL_BUFFER_PIECE_BORDER_HPP
 
 
-#include <boost/array.hpp>
+#include <array>
+
 #include <boost/core/addressof.hpp>
+#include <boost/range/size.hpp>
 
 #include <boost/geometry/core/assert.hpp>
 #include <boost/geometry/core/config.hpp>
@@ -100,9 +103,9 @@ namespace detail { namespace buffer
 template <typename Ring, typename Point>
 struct piece_border
 {
-    typedef typename geometry::coordinate_type<Point>::type coordinate_type;
-    typedef typename default_comparable_distance_result<Point>::type radius_type;
-    typedef typename geometry::strategy::buffer::turn_in_ring_winding<coordinate_type>::state_type state_type;
+    using coordinate_type = geometry::coordinate_type_t<Point>;
+    using radius_type = typename default_comparable_distance_result<Point>::type;
+    using state_type = typename geometry::strategy::buffer::turn_in_ring_winding<coordinate_type>::state_type;
 
     bool m_reversed;
 
@@ -115,7 +118,7 @@ struct piece_border
     // Points from the original (one or two, depending on piece shape)
     // Note, if there are 2 points, they are REVERSED w.r.t. the original
     // Therefore here we can walk in its order.
-    boost::array<Point, 2> m_originals;
+    std::array<Point, 2> m_originals;
     std::size_t m_original_size;
 
     geometry::model::box<Point> m_envelope;
@@ -351,7 +354,7 @@ private :
               TiRStrategy const& strategy,
               geometry::strategy::buffer::place_on_ring_type place_on_ring, State& state) const
     {
-        return strategy.apply(point, p1, p2, place_on_ring, m_is_convex, state, get_full_ring());
+        return strategy.apply(point, p1, p2, place_on_ring, m_is_convex, state);
     }
 
     template <typename It, typename Box, typename Strategy>
@@ -472,7 +475,7 @@ private :
     template <typename It>
     inline void calculate_radii(Point const& center, It begin, It end)
     {
-        typedef geometry::model::referring_segment<Point const> segment_type;
+        using segment_type = geometry::model::referring_segment<Point const>;
 
         bool first = true;
 

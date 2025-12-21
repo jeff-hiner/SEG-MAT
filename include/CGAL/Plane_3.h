@@ -29,6 +29,8 @@ namespace CGAL {
 template <class R_>
 class Plane_3 : public R_::Kernel_base::Plane_3
 {
+  typedef typename R_::Boolean               Boolean;
+  typedef typename R_::Oriented_side         Oriented_side;
   typedef typename R_::RT                    RT;
   typedef typename R_::Point_2               Point_2;
   typedef typename R_::Point_3               Point_3;
@@ -41,7 +43,7 @@ class Plane_3 : public R_::Kernel_base::Plane_3
   typedef typename R_::Aff_transformation_3  Aff_transformation_3;
 
   typedef Plane_3                            Self;
-  CGAL_static_assertion((std::is_same<Self, typename R_::Plane_3>::value));
+  static_assert(std::is_same<Self, typename R_::Plane_3>::value);
 
 public:
 
@@ -140,17 +142,17 @@ public:
     return R().compute_d_3_object()(*this);
   }
 
-  bool has_on(const Point_3 &p) const
+  Boolean has_on(const Point_3 &p) const
   {
     return R().has_on_3_object()(*this, p);
   }
 
-  bool has_on(const Circle_3 &c) const
+  Boolean has_on(const Circle_3 &c) const
   {
     return R().has_on_3_object()(*this, c);
   }
 
-  bool has_on(const Line_3 &l) const
+  Boolean has_on(const Line_3 &l) const
   {
     return R().has_on_3_object()(*this, l);
   }
@@ -204,33 +206,32 @@ public:
     return R().oriented_side_3_object()(*this, p);
   }
 
-  bool has_on_positive_side(const Point_3 &p) const
+  Boolean has_on_positive_side(const Point_3 &p) const
   {
     return R().has_on_positive_side_3_object()(*this, p);
   }
 
-  bool has_on_negative_side(const Point_3 &p) const
+  Boolean has_on_negative_side(const Point_3 &p) const
   {
     return R().has_on_negative_side_3_object()(*this, p);
   }
 
 /*
-  bool         has_on(const Point_3 &p) const
+  Boolean has_on(const Point_3 &p) const
   {
     return oriented_side(p) == ON_ORIENTED_BOUNDARY;
   }
-  bool         has_on(const Line_3 &l) const
+  Boolean has_on(const Line_3 &l) const
   {
     return has_on(l.point())
        &&  has_on(l.point() + l.direction().to_vector());
   }
 */
 
-  bool is_degenerate() const
+  Boolean is_degenerate() const
   {
     return R().is_degenerate_3_object()(*this);
   }
-
 };
 
 

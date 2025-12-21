@@ -34,7 +34,7 @@ class Weighted_point_3 : public R_::Kernel_base::Weighted_point_3
   typedef typename R_::FT                    FT;
 
   typedef Weighted_point_3                            Self;
-  CGAL_static_assertion((std::is_same<Self, typename R_::Weighted_point_3>::value));
+  static_assert(std::is_same<Self, typename R_::Weighted_point_3>::value);
 
 public:
 
@@ -192,62 +192,6 @@ public:
   }
 
 };
-
-template <class R>
-inline
-bool
-operator==(const Origin& o, const Weighted_point_3<R>& p)
-{ return p == o; }
-
-template <class R>
-inline
-bool
-operator!=(const Origin& o, const Weighted_point_3<R>& p)
-{ return p != o; }
-
-template <class R>
-inline
-bool
-operator==(const Point_3<R>& bp, const Weighted_point_3<R>& p)
-{ return bp == p.point(); }
-
-template <class R>
-inline
-bool
-operator!=(const Point_3<R>& bp, const Weighted_point_3<R>& p)
-{ return bp != p.point(); }
-
-template <class R>
-inline
-bool
-operator==(const Weighted_point_3<R>& p, const Point_3<R>& bp)
-{ return bp == p.point(); }
-
-template <class R>
-inline
-bool
-operator!=(const Weighted_point_3<R>& p, const Point_3<R>& bp)
-{ return bp != p.point(); }
-
-template <class R>
-inline
-bool
-operator==(const Weighted_point_3<R>& p, const Weighted_point_3<R>& p2)
-{ return p.point() == p2.point(); }
-
-template <class R>
-inline
-bool
-operator!=(const Weighted_point_3<R>& p, const Weighted_point_3<R>& p2)
-{ return p.point() != p2.point(); }
-
-
-template <class R>
-inline
-bool
-operator<(const Weighted_point_3<R>& p, const Weighted_point_3<R>& q)
-{ return p.point() < q.point(); }
-
 
 template <class R >
 std::ostream&

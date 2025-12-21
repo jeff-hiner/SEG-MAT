@@ -4,8 +4,9 @@
 //
 // Copyright (c) 2011-2014 Adam Wulkiewicz, Lodz, Poland.
 //
-// This file was modified by Oracle on 2020-2022.
-// Modifications copyright (c) 2020-2022 Oracle and/or its affiliates.
+// This file was modified by Oracle on 2020-2023.
+// Modifications copyright (c) 2020-2023, Oracle and/or its affiliates.
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 //
 // Use, modification and distribution is subject to the Boost Software License,
@@ -15,6 +16,7 @@
 #ifndef BOOST_GEOMETRY_INDEX_DETAIL_ALGORITHMS_MARGIN_HPP
 #define BOOST_GEOMETRY_INDEX_DETAIL_ALGORITHMS_MARGIN_HPP
 
+#include <boost/geometry/core/access.hpp>
 #include <boost/geometry/core/coordinate_dimension.hpp>
 #include <boost/geometry/core/coordinate_type.hpp>
 #include <boost/geometry/core/static_assert.hpp>
@@ -32,7 +34,7 @@ struct default_margin_result
 {
     using type = typename select_most_precise
         <
-            typename coordinate_type<Box>::type,
+            coordinate_type_t<Box>,
             double
         >::type;
 };
@@ -166,10 +168,11 @@ struct comparable_margin<Box, box_tag>
 template <typename Geometry>
 typename default_margin_result<Geometry>::type comparable_margin(Geometry const& g)
 {
-    return dispatch::comparable_margin<
-        Geometry,
-        typename tag<Geometry>::type
-    >::apply(g);
+    return dispatch::comparable_margin
+        <
+            Geometry,
+            tag_t<Geometry>
+        >::apply(g);
 }
 
 //template <typename Box>

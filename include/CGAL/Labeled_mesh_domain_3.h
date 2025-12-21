@@ -7,13 +7,8 @@
 // $Id$
 // SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
 //
-//
 // Author(s)     : Stéphane Tayeb, Aymeric PELLE
-//
-//******************************************************************************
-// File Description :
-// class Labeled_mesh_domain_3. See class description.
-//******************************************************************************
+
 
 #ifndef CGAL_LABELED_MESH_DOMAIN_3_H
 #define CGAL_LABELED_MESH_DOMAIN_3_H
@@ -47,7 +42,7 @@
 #ifdef CGAL_MESH_3_VERBOSE
 #  include <boost/format.hpp>
 #endif
-#include <boost/optional.hpp>
+#include <optional>
 
 #include <CGAL/Mesh_3/Null_subdomain_index.h>
 #include <CGAL/Mesh_domain_with_polyline_features_3.h>
@@ -336,12 +331,14 @@ Let `p` be a Point.
 `CGAL::Implicit_multi_domain_to_labeling_function_wrapper` is a good candidate for this template parameter
 if there are several components to mesh.
 
-The function type can be any model of the concept `Callable` compatible with the signature `Subdomain_index(const Point_3&)`: it can be a function, a function object, a lambda expression... that takes a `%Point_3` as argument, and returns a type convertible to `Subdomain_index`.
+The function type can be any model of the concept `Callable` compatible with the signature
+`Subdomain_index(const %Point_3&)`: it can be a function, a function object, a lambda expression...
+that takes a `%Point_3` as argument, and returns a type convertible to `Subdomain_index`.
 
-\cgalModels `MeshDomain_3`
+\cgalModels{MeshDomain_3}
 
-\sa `Implicit_multi_domain_to_labeling_function_wrapper`
-\sa `CGAL::make_mesh_3()`.
+\sa `CGAL::Implicit_multi_domain_to_labeling_function_wrapper`
+\sa `CGAL::make_mesh_3()`
 
 */
 template<class BGT,
@@ -350,9 +347,9 @@ template<class BGT,
                                                 Subdomain_index_> >
 class Labeled_mesh_domain_3
 #ifndef DOXYGEN_RUNNING
-: protected details::Labeled_mesh_domain_3_impl<BGT,
-                                                Subdomain_index_,
-                                                Surface_patch_index_>
+  : protected details::Labeled_mesh_domain_3_impl<BGT,
+                                                  Subdomain_index_,
+                                                  Surface_patch_index_>
 #endif
 {
 public:
@@ -381,12 +378,12 @@ public:
   /// The number type (a field type) of the geometric traits class
   typedef typename Geom_traits::FT           FT;
 ///@}
-#else
-  typedef boost::optional<Subdomain_index>  Subdomain;
+#else // DOXYGEN_RUNNING
+  typedef std::optional<Subdomain_index>  Subdomain;
 
   // Type of indexes for cells of the input complex
   typedef Surface_patch_index_                  Surface_patch_index;
-  typedef boost::optional<Surface_patch_index>  Surface_patch;
+  typedef std::optional<Surface_patch_index>  Surface_patch;
 
   // Type of indexes to characterize the lowest dimensional face of the input
   // complex on which a vertex lie
@@ -428,7 +425,7 @@ public:
   typedef typename BGT::FT FT;
   typedef BGT Geom_traits;
   using Impl_details::construct_pair_functor;
-#endif
+#endif // DOXYGEN_RUNNING
 
 /// \name Creation
 /// @{
@@ -451,16 +448,19 @@ public:
    *      \cgalParamDefault{FT(1e-3)}
    *   \cgalParamNEnd
    * \cgalNamedParamsEnd
+   *
    * \cgalHeading{Example}
    * From the example (\ref Mesh_3/mesh_implicit_domains_2.cpp):
    * \snippet Mesh_3/mesh_implicit_domains_2.cpp Domain creation
-   *
    */
   template<typename Function, typename Bounding_object, typename CGAL_NP_TEMPLATE_PARAMETERS>
   Labeled_mesh_domain_3(const Function& function,
                         const Bounding_object& bounding_object,
-                        const CGAL_NP_CLASS& np = parameters::default_values(),
-                        typename std::enable_if<!is_named_function_parameter<Function>>::type* = nullptr)
+                        const CGAL_NP_CLASS& np = parameters::default_values()
+#ifndef DOXYGEN_RUNNING
+                        , typename std::enable_if<!is_named_function_parameter<Function>>::type* = nullptr
+#endif // DOXYGEN_RUNNING
+                        )
   :Impl_details(function,
                 bounding_object,
                 parameters::choose_parameter(parameters::get_parameter(np, internal_np::error_bound), FT(1e-3)),
@@ -496,7 +496,7 @@ public:
   template<typename Function, typename Bounding_object>
 #if !defined(BOOST_MSVC)
   CGAL_DEPRECATED
-#endif
+#endif // BOOST_MSVC
   Labeled_mesh_domain_3(const Function& function,
                         const Bounding_object& bounding_object,
                         double error_bound,
@@ -505,8 +505,8 @@ public:
                           bounding_object,
                           parameters::relative_error_bound(error_bound))
   {}
-#endif
-#endif
+#endif // CGAL_NO_DEPRECATED_CODE
+#endif // DOXYGEN_RUNNING
 
 /// \name Creation of domains from 3D images
 /// @{
@@ -656,7 +656,7 @@ public:
    *    \cgalParamExtra{The return type of the function depends on whether this parameter
    *                    or `input_features` are provided or not.}
    *    \cgalParamExtra{If `weights` is provided, it must either be adapted to the detected features,
-   *                    or post-processed during feature detection to keep consistency
+   *                    or postprocessed during feature detection to keep consistency
    *                    of the output `MeshDomainWithFeatures_3`.
    *                    Available functors implement the necessary modifications.}
    *   \cgalParamNEnd
@@ -870,17 +870,15 @@ public:
    * function.  The domain to be discretized is assumed to be the domain where
    * the function has negative values.
    *
-   * The method takes as argument a bounding sphere which is required to
-   * circumscribe the surface and to have its center inside the domain.
-   *
    * \tparam Function a type compatible with the signature `FT(Point_3)`: it takes a point as argument,
    *                  and returns a scalar value. That object must be model of `CopyConstructible`
    * \tparam NamedParameters a sequence of \ref bgl_namedparameters "Named Parameters"
    * \tparam Bounding_object either a bounding sphere (of type `Sphere_3`), a bounding box (type `Bbox_3`),
-   *                         or a bounding `Iso_cuboid_3`
+   *                         or a bounding `Iso_cuboid_3` which is required to circumscribe
+   *                         the surface and to have its center inside the domain.
    *
    * \param function the implicit function
-   * \param bounding_object object boundint the meshable domain and its center is inside the domain.
+   * \param bounding_object object bounding the meshable domain and its center is inside the domain.
    * \param np an optional sequence of \ref bgl_namedparameters "Named Parameters" among the ones listed below:
    *
    * \cgalNamedParamsBegin
@@ -931,12 +929,11 @@ public:
 /// @}
 #ifndef DOXYGEN_RUNNING
   template<typename CGAL_NP_TEMPLATE_PARAMETERS>
-  static Labeled_mesh_domain_3 create_implicit_mesh_domain(const CGAL_NP_CLASS& np = parameters::default_values())
+  static Labeled_mesh_domain_3 create_implicit_mesh_domain(const CGAL_NP_CLASS &np)
   {
     static_assert(!parameters::is_default_parameter<CGAL_NP_CLASS, internal_np::function_param_t>::value, "Value for required parameter not found");
     static_assert(!parameters::is_default_parameter<CGAL_NP_CLASS, internal_np::bounding_object_param_t>::value, "Value for required parameter not found");
 
-    using parameters::get_parameter;
     return create_implicit_mesh_domain(parameters::get_parameter(np, internal_np::function_param),
                                        parameters::get_parameter(np, internal_np::bounding_object_param),
                                        np);
@@ -1092,7 +1089,7 @@ public:
     Surface_patch operator()(const Point_3& a, const Point_3& b) const
     {
       // If f(a) != f(b), then [a,b] intersects some surface. Here we consider
-      // [a,b] intersects surface_patch labelled <f(a),f(b)> (or <f(b),f(a)>).
+      // [a,b] intersects surface_patch labeled <f(a),f(b)> (or <f(b),f(a)>).
       // It may be false, further rafinement will improve precision
       const Subdomain_index value_a = r_domain_.function_(a);
       const Subdomain_index value_b = r_domain_.function_(b);
@@ -1115,7 +1112,7 @@ public:
     {
       const auto clipped = CGAL::intersection(query, r_domain_.bbox_);
       if(clipped)
-        if(const Segment_3* s = boost::get<Segment_3>(&*clipped))
+        if(const Segment_3* s = std::get_if<Segment_3>(&*clipped))
           return this->operator()(*s);
 
       return Surface_patch();
@@ -1134,11 +1131,7 @@ public:
   /*
    * Returns a point in the intersection of the primitive `type`
    * with some boundary surface.
-   * `Type1` is either `Segment_3`, `Ray_3` or `Line_3`.
-   * The integer `dimension` is set to the dimension of the lowest
-   * dimensional face in the input complex containing the returned point, and
-   * `index` is set to the index to be stored at a mesh vertex lying
-   * on this face.
+   * `Type` is either `Segment_3`, `Ray_3` or `Line_3`.
    */
   struct Construct_intersection
   {
@@ -1148,7 +1141,7 @@ public:
     Intersection operator()(const Segment_3& s) const
     {
 #ifndef CGAL_MESH_3_NO_LONGER_CALLS_DO_INTERSECT_3
-      CGAL_precondition(r_domain_.do_intersect_surface_object()(s) != boost::none);
+      CGAL_precondition(r_domain_.do_intersect_surface_object()(s) != std::nullopt);
 #endif // NOT CGAL_MESH_3_NO_LONGER_CALLS_DO_INTERSECT_3
       return this->operator()(s.source(),s.target());
     }
@@ -1165,10 +1158,10 @@ public:
 
   private:
     /*
-     * Returns a point in the intersection of [a,b] with the surface
-     *  `a` must be the source point, and `b` the out point. It's important
+     * Returns a point in the intersection of `[a,b]` with the surface
+     *  `a` must be the source point, and `b` the out point. It is important
      * because it drives bisection cuts.
-     * Indeed, the returned point is the first intersection from  `[a,b]`
+     * Indeed, the returned point is the first intersection of `[a,b]`
      * with a subdomain surface.
      */
     Intersection operator()(const Point_3& a, const Point_3& b) const
@@ -1191,7 +1184,7 @@ public:
 
       // If both extremities are in the same subdomain,
       // there is no intersection.
-      // This should not happen...
+      // Should only be able to happen during initial point generation.
       if( value_at_p1 == value_at_p2 )
       {
         return Intersection();
@@ -1243,7 +1236,7 @@ public:
     {
       const auto clipped = CGAL::intersection(query, r_domain_.bbox_);
       if(clipped)
-        if(const Segment_3* s = boost::get<Segment_3>(&*clipped))
+        if(const Segment_3* s = std::get_if<Segment_3>(&*clipped))
           return this->operator()(*s);
 
       return Intersection();
@@ -1278,14 +1271,14 @@ public:
    * where lies a vertex with dimension 2 and index `index`.
    */
   Surface_patch_index surface_patch_index(const Index& index) const
-  { return boost::get<Surface_patch_index>(index); }
+  { return Mesh_3::internal::get_index<Surface_patch_index>(index); }
 
   /*
    * Returns the index of the subdomain containing a vertex
    *  with dimension 3 and index `index`.
    */
   Subdomain_index subdomain_index(const Index& index) const
-  { return boost::get<Subdomain_index>(index); }
+  { return Mesh_3::internal::get_index<Subdomain_index>(index); }
 
   // -----------------------------------
   // Backward Compatibility

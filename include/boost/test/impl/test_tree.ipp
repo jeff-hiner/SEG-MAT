@@ -435,7 +435,7 @@ namespace ut_detail {
 std::string
 normalize_test_case_name( const_string name )
 {
-    std::string norm_name( name.begin(), name.size() );
+    std::string norm_name( name.begin(), name.end() );
 
     if( name[0] == '&' )
         norm_name = norm_name.substr( 1 );
@@ -501,16 +501,16 @@ auto_test_unit_registrar::auto_test_unit_registrar( const_string ts_name, const_
 
 //____________________________________________________________________________//
 
-auto_test_unit_registrar::auto_test_unit_registrar( test_unit_generator const& tc_gen, decorator::collector_t& decorators )
+auto_test_unit_registrar::auto_test_unit_registrar( test_unit_generator const& tc_generator, decorator::collector_t& decorators )
 {
-    framework::current_auto_test_suite().add( tc_gen, decorators );
+    framework::current_auto_test_suite().add( tc_generator, decorators );
 }
 
 //____________________________________________________________________________//
 
-auto_test_unit_registrar::auto_test_unit_registrar( boost::shared_ptr<test_unit_generator> tc_gen, decorator::collector_t& decorators )
+auto_test_unit_registrar::auto_test_unit_registrar( boost::shared_ptr<test_unit_generator> tc_generator, decorator::collector_t& decorators )
 {
-    framework::current_auto_test_suite().add( tc_gen, decorators );
+    framework::current_auto_test_suite().add( tc_generator, decorators );
 }
 
 

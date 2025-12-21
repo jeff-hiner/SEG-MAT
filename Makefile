@@ -13,7 +13,7 @@ EMCC = $(EMSDK)/upstream/emscripten/em++.bat
 
 # Compiler settings
 CXX = $(EMCC)
-CXXFLAGS = -std=c++14 -Wall -Wextra
+CXXFLAGS = -std=c++17 -Wall -Wextra
 OPT ?= -O2
 
 # Include paths

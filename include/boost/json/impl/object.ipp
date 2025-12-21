@@ -10,6 +10,7 @@
 #ifndef BOOST_JSON_IMPL_OBJECT_IPP
 #define BOOST_JSON_IMPL_OBJECT_IPP
 
+#include <boost/core/detail/static_assert.hpp>
 #include <boost/container_hash/hash.hpp>
 #include <boost/json/object.hpp>
 #include <boost/json/detail/digest.hpp>
@@ -128,9 +129,8 @@ allocate(
     std::uintptr_t salt,
     storage_ptr const& sp)
 {
-    BOOST_STATIC_ASSERT(
-        alignof(key_value_pair) >=
-        alignof(index_t));
+    BOOST_CORE_STATIC_ASSERT(
+        alignof(key_value_pair) >= alignof(index_t));
     BOOST_ASSERT(capacity > 0);
     BOOST_ASSERT(capacity <= max_size());
     table* p;
@@ -423,6 +423,45 @@ operator=(
 
 //----------------------------------------------------------
 //
+// Lookup
+//
+//----------------------------------------------------------
+
+system::result<value&>
+object::
+try_at(string_view key) noexcept
+{
+    auto it = find(key);
+    if( it != end() )
+        return it->value();
+
+    system::error_code ec;
+    BOOST_JSON_FAIL(ec, error::out_of_range);
+    return ec;
+}
+
+system::result<value const&>
+object::
+try_at(string_view key) const noexcept
+{
+    auto it = find(key);
+    if( it != end() )
+        return it->value();
+
+    system::error_code ec;
+    BOOST_JSON_FAIL(ec, error::out_of_range);
+    return ec;
+}
+
+value const&
+object::
+at(string_view key, source_location const& loc) const&
+{
+    return try_at(key).value(loc);
+}
+
+//----------------------------------------------------------
+//
 // Modifiers
 //
 //----------------------------------------------------------
@@ -448,9 +487,11 @@ insert(
 {
     auto const n0 = size();
     if(init.size() > max_size() - n0)
-        detail::throw_length_error( "object too large" );
-    reserve(n0 + init.size());
-    revert_insert r(*this);
+    {
+        BOOST_STATIC_CONSTEXPR source_location loc = BOOST_CURRENT_LOCATION;
+        detail::throw_system_error( error::object_too_large, &loc );
+    }
+    revert_insert r( *this, n0 + init.size() );
     if(t_->is_small())
     {
         for(auto& iv : init)
@@ -680,23 +721,6 @@ if_contains(
 //
 //----------------------------------------------------------
 
-auto
-object::
-insert_impl(
-    pilfered<key_value_pair> p) ->
-        std::pair<iterator, bool>
-{
-    // caller is responsible
-    // for preventing aliasing.
-    reserve(size() + 1);
-    auto const result =
-        detail::find_in_object(*this, p.get().key());
-    if(result.first)
-        return { result.first, false };
-    return { insert_impl(
-        p, result.second), true };
-}
-
 key_value_pair*
 object::
 insert_impl(
@@ -722,10 +746,10 @@ insert_impl(
     return pv;
 }
 
-// rehash to at least `n` buckets
-void
+// allocate new table, copy elements there, and rehash them
+object::table*
 object::
-rehash(std::size_t new_capacity)
+reserve_impl(std::size_t new_capacity)
 {
     BOOST_ASSERT(
         new_capacity > t_->capacity);
@@ -740,8 +764,7 @@ rehash(std::size_t new_capacity)
             size() * sizeof(
                 key_value_pair));
     t->size = t_->size;
-    table::deallocate(t_, sp_);
-    t_ = t;
+    std::swap(t_, t);
 
     if(! t_->is_small())
     {
@@ -758,6 +781,8 @@ rehash(std::size_t new_capacity)
             head = i;
         }
     }
+
+    return t;
 }
 
 bool
@@ -784,7 +809,10 @@ growth(
     std::size_t new_size) const
 {
     if(new_size > max_size())
-        detail::throw_length_error( "object too large" );
+    {
+        BOOST_STATIC_CONSTEXPR source_location loc = BOOST_CURRENT_LOCATION;
+        detail::throw_system_error( error::object_too_large, &loc );
+    }
     std::size_t const old = capacity();
     if(old > max_size() - old / 2)
         return new_size;

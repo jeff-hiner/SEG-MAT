@@ -51,9 +51,7 @@
 #include <CGAL/Polygon_2.h>
 
 #include <boost/algorithm/clamp.hpp>
-#include <boost/optional/optional.hpp>
 #include <boost/range/value_type.hpp>
-#include <boost/shared_ptr.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -61,6 +59,8 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+#include <optional>
+#include <memory>
 
 namespace CGAL {
 namespace Straight_skeleton_extrusion {
@@ -86,8 +86,8 @@ inline constexpr FT default_extrusion_height()
 }
 
 // @todo Maybe this postprocessing is not really necessary? Do users really care if the point
-// is not perfectly above the input contour edge (it generally cannot be anyway if the kernel is not exact except for some
-// specific cases)?
+// is not perfectly above the input contour edge (it generally cannot be anyway if the kernel
+// is not exact except for some specific cases)?
 #define CGAL_SLS_SNAP_TO_VERTICAL_SLABS
 #ifdef CGAL_SLS_SNAP_TO_VERTICAL_SLABS
 
@@ -124,7 +124,7 @@ snap_point_to_contour_halfedge_plane(const typename GeomTraits::Point_2& op,
     // Project orthogonally onto the halfedge
     // @todo should the projection be along the direction of the other offset edge sharing this point?
     Segment_2 s { sv->point(), tv->point() };
-    boost::optional<Line_2> line = CGAL_SS_i::compute_normalized_line_coeffC2(s);
+    std::optional<Line_2> line = CGAL_SS_i::compute_normalized_line_coeffC2(s);
     CGAL_assertion(bool(line)); // otherwise the skeleton would have failed already
 
     FT px, py;
@@ -205,17 +205,19 @@ public:
   }
 
   // can't modify the position yet because we need arrange_polygons() to still work properly
+  //
+  // @fixme on paper one could create a polygon thin-enough w.r.t. the max weight value
+  // such thatthere is a skeleton vertex that wants to be snapped to two different sides...
   void on_offset_point(const Point_2& op,
                        SS_Halfedge_const_handle hook) const
   {
-    CGAL_assertion(hook->is_bisector());
-
-#ifdef CGAL_SLS_SNAP_TO_VERTICAL_SLABS
-    // @fixme on paper one could create a polygon thin-enough w.r.t. the max weight value such that
-    // there is a skeleton vertex that wants to be snapped to two different sides...
-    CGAL_assertion(m_snapped_positions.count(op) == 0);
+    CGAL_precondition(hook->is_bisector());
 
     HDS_Halfedge_const_handle canonical_hook = (hook < hook->opposite()) ? hook : hook->opposite();
+    m_offset_points[canonical_hook] = op;
+
+#ifdef CGAL_SLS_SNAP_TO_VERTICAL_SLABS
+    CGAL_precondition(m_snapped_positions.count(op) == 0);
 
     SS_Halfedge_const_handle contour_h1 = hook->defining_contour_edge();
     CGAL_assertion(contour_h1->opposite()->is_border());
@@ -224,9 +226,6 @@ public:
 
     const bool is_h1_vertical = (contour_h1->weight() == m_vertical_weight);
     const bool is_h2_vertical = (contour_h2->weight() == m_vertical_weight);
-
-    // this can happen when the offset is passing through vertices
-    m_offset_points[canonical_hook] = op;
 
     // if both are vertical, it's the common vertex (which has to exist)
     if(is_h1_vertical && is_h2_vertical)
@@ -278,11 +277,11 @@ class Extrusion_builder
   using Polygon_2 = CGAL::Polygon_2<Geom_traits>;
   using Polygon_with_holes_2 = CGAL::Polygon_with_holes_2<Geom_traits>;
 
-  using Offset_polygons = std::vector<boost::shared_ptr<Polygon_2> >;
-  using Offset_polygons_with_holes = std::vector<boost::shared_ptr<Polygon_with_holes_2> >;
+  using Offset_polygons = std::vector<std::shared_ptr<Polygon_2> >;
+  using Offset_polygons_with_holes = std::vector<std::shared_ptr<Polygon_with_holes_2> >;
 
   using Straight_skeleton_2 = CGAL::Straight_skeleton_2<Geom_traits>;
-  using Straight_skeleton_2_ptr = boost::shared_ptr<Straight_skeleton_2>;
+  using Straight_skeleton_2_ptr = std::shared_ptr<Straight_skeleton_2>;
 
   using SS_Vertex_const_handle = typename Straight_skeleton_2::Vertex_const_handle;
   using SS_Halfedge_const_handle = typename Straight_skeleton_2::Halfedge_const_handle;
@@ -691,7 +690,7 @@ public:
 #ifdef CGAL_SLS_SNAP_TO_VERTICAL_SLABS
       Visitor visitor(*ss_ptr, offset_points, vertical_weight, snapped_positions);
 #else
-      Visitor visitor(*ss_ptr, vertical_weight, offset_points);
+      Visitor visitor(*ss_ptr, offset_points);
 #endif
       Offset_builder ob(*ss_ptr, Offset_builder_traits(), visitor);
       Offset_polygons raw_output;
@@ -813,7 +812,7 @@ public:
                                           CGAL_SS_i::vertices_begin(hole),
                                           CGAL_SS_i::vertices_end(hole),
                                           std::begin(no_holes), std::end(no_holes),
-                                          std::begin(speeds[hole_id]), std::end(speeds[hole_id]),
+                                          std::begin(speeds[1 + hole_id]), std::end(speeds[1 + hole_id]),
                                           std::begin(no_speeds), std::end(no_speeds),
                                           m_gt);
 
@@ -850,7 +849,7 @@ public:
     // the outer boundary into a hole. Hence, it needs to be reversed back to proper orientation
     // - the exterior offset of the holes is built by reversing the holes and computing an internal
     // skeleton. Hence, the result also needs to be reversed.
-    for(boost::shared_ptr<Polygon_2> ptr : raw_output)
+    for(std::shared_ptr<Polygon_2> ptr : raw_output)
       ptr->reverse_orientation();
 
     Offset_polygons_with_holes output = CGAL::arrange_offset_polygons_2<Polygon_with_holes_2>(raw_output);
@@ -886,7 +885,7 @@ void convert_angles(AngleRange& angles)
     CGAL_precondition(0 < angle && angle < 180);
 
     // @todo should this be an epsilon around 90°? As theta goes to 90°, tan(theta) goes to infinity
-    // and thus we could get numerical issues (overlfows) if the kernel is not exact
+    // and thus we could get numerical issues (overflows) if the kernel is not exact
     if(angle == 90)
       return 0;
     else
@@ -955,7 +954,7 @@ preprocess_weights(WeightRange& weights)
   // Since the max value might not be very close to 90°, take the max between of the large-% weight
   // and the weight corresponding to an angle of 89.9999999°
   const FT weight_of_89d9999999 = 572957787.3425436; // tan(89.9999999°)
-  const FT scaled_max = (std::max)(weight_of_89d9999999, 1e3 * max_value);
+  const FT scaled_max = (std::max)(weight_of_89d9999999, FT(1e3) * max_value);
 
   for(auto& contour_weights : weights)
   {
@@ -1034,7 +1033,7 @@ bool extrude_skeleton(const PolygonWithHoles& pwh,
   // build a soup, to be converted to a mesh afterwards
   std::vector<Point_3> points;
   std::vector<std::vector<std::size_t> > faces;
-  points.reserve(2 * pwh.outer_boundary().size()); // just a reasonnable guess
+  points.reserve(2 * pwh.outer_boundary().size()); // just a reasonable guess
   faces.reserve(2 * pwh.outer_boundary().size() + 2*pwh.number_of_holes());
 
   Extrusion_builder<Geom_traits> builder(gt);

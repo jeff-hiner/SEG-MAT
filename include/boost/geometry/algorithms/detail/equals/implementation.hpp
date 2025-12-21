@@ -215,7 +215,7 @@ struct equals_by_collection
             >::template type
                 <
                     calculation_type,
-                    typename geometry::point_type<Geometry1>::type
+                    geometry::point_type_t<Geometry1>
                 >;
 
         std::vector<collected_vector_type> c1, c2;
@@ -389,7 +389,7 @@ struct equals
     <
         MultiPolygon1, MultiPolygon2,
         multi_polygon_tag, multi_polygon_tag,
-        areal_tag, areal_tag, 
+        areal_tag, areal_tag,
         2,
         Reverse
     >
@@ -402,7 +402,7 @@ struct equals
     <
         Polygon, MultiPolygon,
         polygon_tag, multi_polygon_tag,
-        areal_tag, areal_tag, 
+        areal_tag, areal_tag,
         2,
         Reverse
     >
@@ -414,7 +414,7 @@ struct equals
     <
         MultiPolygon, Ring,
         multi_polygon_tag, ring_tag,
-        areal_tag, areal_tag, 
+        areal_tag, areal_tag,
         2,
         Reverse
     >

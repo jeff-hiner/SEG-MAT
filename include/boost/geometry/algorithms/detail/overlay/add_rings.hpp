@@ -48,9 +48,9 @@ inline void convert_and_add(GeometryOut& result,
             ring_identifier id,
             bool reversed, bool append)
 {
-    typedef typename geometry::tag<Geometry1>::type tag1;
-    typedef typename geometry::tag<Geometry2>::type tag2;
-    typedef typename geometry::tag<GeometryOut>::type tag_out;
+    using tag1 = geometry::tag_t<Geometry1>;
+    using tag2 = geometry::tag_t<Geometry2>;
+    using tag_out = geometry::tag_t<GeometryOut>;
 
     if (id.source_index == 0)
     {
@@ -96,8 +96,6 @@ inline OutputIterator add_rings(SelectionMap const& map,
             Strategy const& strategy,
             add_rings_error_handling error_handling = add_rings_ignore_unordered)
 {
-    typedef typename SelectionMap::const_iterator iterator;
-
     std::size_t const min_num_points = core_detail::closure::minimum_ring_size
         <
             geometry::closure
@@ -110,29 +108,23 @@ inline OutputIterator add_rings(SelectionMap const& map,
         >::value;
 
 
-    for (iterator it = boost::begin(map);
-        it != boost::end(map);
-        ++it)
+    for (auto const& pair : map)
     {
-        if (! it->second.discarded
-            && it->second.parent.source_index == -1)
+        if (! pair.second.discarded
+            && pair.second.parent.source_index == -1)
         {
             GeometryOut result;
             convert_and_add(result, geometry1, geometry2, collection,
-                    it->first, it->second.reversed, false);
+                    pair.first, pair.second.reversed, false);
 
             // Add children
-            for (typename std::vector<ring_identifier>::const_iterator child_it
-                        = it->second.children.begin();
-                child_it != it->second.children.end();
-                ++child_it)
+            for (auto const& child : pair.second.children)
             {
-                iterator mit = map.find(*child_it);
-                if (mit != map.end()
-                    && ! mit->second.discarded)
+                auto mit = map.find(child);
+                if (mit != map.end() && ! mit->second.discarded)
                 {
                     convert_and_add(result, geometry1, geometry2, collection,
-                            *child_it, mit->second.reversed, true);
+                            child, mit->second.reversed, true);
                 }
             }
 
@@ -141,7 +133,7 @@ inline OutputIterator add_rings(SelectionMap const& map,
             // everything is figured out yet (sum of positive/negative rings)
             if (geometry::num_points(result) >= min_num_points)
             {
-                typedef typename geometry::area_result<GeometryOut, Strategy>::type area_type;
+                using area_type = typename geometry::area_result<GeometryOut, Strategy>::type;
                 area_type const area = geometry::area(result, strategy);
                 area_type const zero = 0;
                 // Ignore if area is 0

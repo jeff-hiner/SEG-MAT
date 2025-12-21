@@ -8,6 +8,7 @@
 #define BOOST_PROCESS_V2_ENV_HPP
 #include <string>
 #include <vector>
+#include <memory>
 
 #include <boost/process/v2/detail/config.hpp>
 #include <boost/process/v2/detail/throw_error.hpp>
@@ -26,9 +27,6 @@ namespace ext
 #if defined(BOOST_PROCESS_V2_WINDOWS)
 using native_env_handle_type = wchar_t *;
 using native_env_iterator = wchar_t *;
-#elif defined(__FreeBSD__)
-using native_env_handle_type = char **;
-using native_env_iterator = char **;
 #else
 using native_env_handle_type = char *;
 using native_env_iterator = char *;
@@ -109,13 +107,18 @@ struct env_view
             detail::ext::native_env_handle_deleter> handle_;
 };
 
+#if defined(BOOST_PROCESS_V2_WINDOWS)
+BOOST_PROCESS_V2_DECL env_view env(HANDLE handle, error_code & ec);
+BOOST_PROCESS_V2_DECL env_view env(HANDLE handle);
+#endif
+
 /// @{
 /// Get the environment of another process.
 BOOST_PROCESS_V2_DECL env_view env(pid_type pid, error_code & ec);
 BOOST_PROCESS_V2_DECL env_view env(pid_type pid);
 
 template<typename Executor>
-BOOST_PROCESS_V2_DECL env_view env(basic_process_handle<Executor> & handle, error_code & ec)
+inline env_view env(basic_process_handle<Executor> & handle, error_code & ec)
 {
 #if defined(BOOST_PROCESS_V2_WINDOWS)
     return env(handle.native_handle(), ec);
@@ -125,7 +128,7 @@ BOOST_PROCESS_V2_DECL env_view env(basic_process_handle<Executor> & handle, erro
 }
 
 template<typename Executor>
-BOOST_PROCESS_V2_DECL env_view env(basic_process_handle<Executor> & handle)
+inline env_view env(basic_process_handle<Executor> & handle)
 {
 #if defined(BOOST_PROCESS_V2_WINDOWS)
   return env(handle.native_handle());
@@ -136,19 +139,10 @@ BOOST_PROCESS_V2_DECL env_view env(basic_process_handle<Executor> & handle)
 
 /// @}
 
-#if defined(BOOST_PROCESS_V2_WINDOWS)
-BOOST_PROCESS_V2_DECL env_view env(HANDLE handle, error_code & ec);
-BOOST_PROCESS_V2_DECL env_view env(HANDLE handle);
-#endif
 
 
 } // namespace ext
 
 BOOST_PROCESS_V2_END_NAMESPACE
 
-#if defined(BOOST_PROCESS_V2_HEADER_ONLY)
-
-#include <boost/process/v2/ext/impl/env.ipp>
-
-#endif
 #endif // BOOST_PROCESS_V2_ENV_HPP

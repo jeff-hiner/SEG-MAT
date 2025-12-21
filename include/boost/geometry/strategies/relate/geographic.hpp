@@ -1,7 +1,8 @@
 // Boost.Geometry
 
-// Copyright (c) 2020-2021, Oracle and/or its affiliates.
+// Copyright (c) 2020-2023, Oracle and/or its affiliates.
 
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Licensed under the Boost Software License version 1.0.
@@ -19,6 +20,8 @@
 #include <boost/geometry/strategies/spherical/point_in_point.hpp>
 #include <boost/geometry/strategies/spherical/disjoint_box_box.hpp>
 
+#include <boost/geometry/strategies/distance/detail.hpp>
+#include <boost/geometry/strategies/distance/services.hpp>
 #include <boost/geometry/strategies/envelope/geographic.hpp>
 #include <boost/geometry/strategies/relate/services.hpp>
 #include <boost/geometry/strategies/detail.hpp>
@@ -77,6 +80,16 @@ public:
             >(base_t::m_spheroid);
     }
 
+    template <typename Geometry1, typename Geometry2>
+    auto comparable_distance(Geometry1 const&, Geometry2 const&,
+                             distance::detail::enable_if_pp_t<Geometry1, Geometry2> * = nullptr) const
+    {
+        return strategy::distance::geographic
+                <
+                    FormulaPolicy, Spheroid, CalculationType
+                >(base_t::m_spheroid);
+    }
+    
     // covered_by
 
     template <typename Geometry1, typename Geometry2>
@@ -209,6 +222,14 @@ public:
     {
         return strategy::within::spherical_box_box();
     }
+
+    template <typename ComparePolicy, typename EqualsPolicy>
+    using compare_type = typename strategy::compare::spherical
+        <
+            ComparePolicy,
+            EqualsPolicy,
+            -1
+        >;
 };
 
 
@@ -280,6 +301,14 @@ struct strategy_converter<strategy::intersection::geographic_segments<FormulaPol
                     FormulaPolicy, SeriesOrder, Spheroid, CalculationType
                 >(base_t::m_spheroid);
         }
+
+        template <typename ComparePolicy, typename EqualsPolicy>
+        using compare_type = typename strategy::compare::spherical
+            <
+                ComparePolicy,
+                EqualsPolicy,
+               -1
+            >;
     };
 
     static auto get(strategy::intersection::geographic_segments<FormulaPolicy, SeriesOrder, Spheroid, CalculationType> const& s)

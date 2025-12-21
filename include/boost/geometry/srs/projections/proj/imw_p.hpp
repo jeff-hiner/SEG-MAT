@@ -183,7 +183,7 @@ namespace projections
                     point_xy<T> t;
                     T yc = 0.0;
                     int i = 0;
-                    const int n_max_iter = 1000; /* Arbitrarily choosen number... */
+                    const int n_max_iter = 1000; /* Arbitrarily chosen number... */
 
                     lp_lat = this->m_proj_parm.phi_2;
                     lp_lon = xy_x / cos(lp_lat);
@@ -298,7 +298,7 @@ namespace projections
 
         // Factory entry(s)
         BOOST_GEOMETRY_PROJECTIONS_DETAIL_FACTORY_ENTRY_FI(imw_p_entry, imw_p_ellipsoid)
-        
+
         BOOST_GEOMETRY_PROJECTIONS_DETAIL_FACTORY_INIT_BEGIN(imw_p_init)
         {
             BOOST_GEOMETRY_PROJECTIONS_DETAIL_FACTORY_INIT_ENTRY(imw_p, imw_p_entry)

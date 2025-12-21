@@ -2,10 +2,11 @@
 //
 // R-tree inserting visitor implementation
 //
-// Copyright (c) 2011-2015 Adam Wulkiewicz, Lodz, Poland.
+// Copyright (c) 2011-2023 Adam Wulkiewicz, Lodz, Poland.
 //
-// This file was modified by Oracle on 2019-2021.
-// Modifications copyright (c) 2019-2021 Oracle and/or its affiliates.
+// This file was modified by Oracle on 2019-2023.
+// Modifications copyright (c) 2019-2023 Oracle and/or its affiliates.
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 //
 // Use, modification and distribution is subject to the Boost Software License,
@@ -24,11 +25,12 @@
 
 #include <boost/geometry/index/detail/algorithms/bounds.hpp>
 #include <boost/geometry/index/detail/algorithms/content.hpp>
+#include <boost/geometry/index/detail/rtree/node/node.hpp>
 #include <boost/geometry/index/detail/rtree/node/node_elements.hpp>
 #include <boost/geometry/index/detail/rtree/node/subtree_destroyer.hpp>
 #include <boost/geometry/index/detail/rtree/options.hpp>
 
-#include <boost/geometry/util/condition.hpp>
+#include <boost/geometry/util/constexpr.hpp>
 
 namespace boost { namespace geometry { namespace index {
 
@@ -70,7 +72,7 @@ public:
         size_t children_count = children.size();
 
         // choose index with smallest content change or smallest content
-        size_t choosen_index = 0;
+        size_t chosen_index = 0;
         content_type smallest_content_diff = (std::numeric_limits<content_type>::max)();
         content_type smallest_content = (std::numeric_limits<content_type>::max)();
 
@@ -95,11 +97,11 @@ public:
             {
                 smallest_content_diff = content_diff;
                 smallest_content = content;
-                choosen_index = i;
+                chosen_index = i;
             }
         }
 
-        return choosen_index;
+        return chosen_index;
     }
 };
 
@@ -180,7 +182,7 @@ public:
             // in the original node, then, if exception was thrown, the node would always have more than max
             // elements.
             // The alternative is to use moving semantics in the implementations of redistribute_elements,
-            // it will be possible to throw from boost::move() in the case of e.g. static size nodes.
+            // it will be possible to throw from std::move() in the case of e.g. static size nodes.
 
             // redistribute elements
             box_type box2;
@@ -326,12 +328,11 @@ protected:
         // Enlarge it in case if it's not bounding geometry type.
         // It's because Points and Segments are compared WRT machine epsilon
         // This ensures that leafs bounds correspond to the stored elements
-        if (BOOST_GEOMETRY_CONDITION((
-                std::is_same<Element, value_type>::value
-             && ! index::detail::is_bounding_geometry
-                    <
-                        typename indexable_type<translator_type>::type
-                    >::value )) )
+        if BOOST_GEOMETRY_CONSTEXPR ((std::is_same<Element, value_type>::value)
+                                    && ! index::detail::is_bounding_geometry
+                                            <
+                                                typename indexable_type<translator_type>::type
+                                            >::value)
         {
             geometry::detail::expand_by_epsilon(m_element_bounds);
         }
@@ -342,19 +343,19 @@ protected:
     inline void traverse(Visitor & visitor, internal_node & n)
     {
         // choose next node
-        size_t choosen_node_index = rtree::choose_next_node<MembersHolder>
+        size_t chosen_node_index = rtree::choose_next_node<MembersHolder>
             ::apply(n, rtree::element_indexable(m_element, m_translator),
                     m_parameters,
                     m_leafs_level - m_traverse_data.current_level);
 
         // expand the node to contain value
         index::detail::expand(
-            rtree::elements(n)[choosen_node_index].first,
+            rtree::elements(n)[chosen_node_index].first,
             m_element_bounds,
             index::detail::get_strategy(m_parameters));
 
         // next traversing step
-        traverse_apply_visitor(visitor, n, choosen_node_index);                                                 // MAY THROW (V, E: alloc, copy, N:alloc)
+        traverse_apply_visitor(visitor, n, chosen_node_index);                                                 // MAY THROW (V, E: alloc, copy, N:alloc)
     }
 
     // TODO: awulkiew - change post_traverse name to handle_overflow or overflow_treatment?
@@ -376,17 +377,17 @@ protected:
     }
 
     template <typename Visitor>
-    inline void traverse_apply_visitor(Visitor & visitor, internal_node &n, size_t choosen_node_index)
+    inline void traverse_apply_visitor(Visitor & visitor, internal_node &n, size_t chosen_node_index)
     {
         // save previous traverse inputs and set new ones
         insert_traverse_data<internal_node, internal_node_pointer, size_type>
             backup_traverse_data = m_traverse_data;
 
         // calculate new traverse inputs
-        m_traverse_data.move_to_next_level(&n, choosen_node_index);
+        m_traverse_data.move_to_next_level(&n, chosen_node_index);
 
         // next traversing step
-        rtree::apply_visitor(visitor, *rtree::elements(n)[choosen_node_index].second);                          // MAY THROW (V, E: alloc, copy, N:alloc)
+        rtree::apply_visitor(visitor, *rtree::elements(n)[chosen_node_index].second);                          // MAY THROW (V, E: alloc, copy, N:alloc)
 
         // restore previous traverse inputs
         m_traverse_data = backup_traverse_data;
@@ -423,16 +424,16 @@ protected:
         // Enlarge bounds of a leaf node.
         // It's because Points and Segments are compared WRT machine epsilon
         // This ensures that leafs' bounds correspond to the stored elements.
-        if (BOOST_GEOMETRY_CONDITION((
-                std::is_same<Node, leaf>::value
-             && ! index::detail::is_bounding_geometry
-                    <
-                        typename indexable_type<translator_type>::type
-                    >::value )))
+        if BOOST_GEOMETRY_CONSTEXPR ((std::is_same<Node, leaf>::value)
+                                     && ! index::detail::is_bounding_geometry
+                                            <
+                                                typename indexable_type<translator_type>::type
+                                            >::value)
         {
             geometry::detail::expand_by_epsilon(n_box);
             geometry::detail::expand_by_epsilon(additional_nodes[0].first);
         }
+
 #endif
 
         // node is not the root - just add the new node
@@ -620,7 +621,7 @@ public:
         BOOST_GEOMETRY_INDEX_ASSERT(base::m_traverse_data.current_level == base::m_leafs_level, "unexpected level");
         BOOST_GEOMETRY_INDEX_ASSERT(base::m_level == base::m_traverse_data.current_level ||
                                     base::m_level == (std::numeric_limits<size_t>::max)(), "unexpected level");
-        
+
         rtree::elements(n).push_back(base::m_element);                                                              // MAY THROW, STRONG (V: alloc, copy)
 
         base::post_traverse(n);                                                                                     // MAY THROW (V: alloc, copy, N: alloc)

@@ -35,7 +35,7 @@ class Triangle_2 : public R_::Kernel_base::Triangle_2
   typedef typename R_::Kernel_base::Triangle_2  RTriangle_2;
 
   typedef Triangle_2                            Self;
-  CGAL_static_assertion((std::is_same<Self, typename R_::Triangle_2>::value));
+  static_assert(std::is_same<Self, typename R_::Triangle_2>::value);
 
 public:
 
@@ -87,18 +87,6 @@ public:
   oriented_side(const Point_2 &p) const
   {
     return R().oriented_side_2_object()(*this,p);
-  }
-
-  typename R::Boolean
-  operator==(const Triangle_2 &t) const
-  {
-    return R().equal_2_object()(*this,t);
-  }
-
-  typename R::Boolean
-  operator!=(const Triangle_2 &t) const
-  {
-    return !(*this == t);
   }
 
   decltype(auto)

@@ -2,8 +2,9 @@
 
 // Copyright (c) 2017 Adam Wulkiewicz, Lodz, Poland.
 
-// This file was modified by Oracle on 2020-2021.
-// Modifications copyright (c) 2020-2021 Oracle and/or its affiliates.
+// This file was modified by Oracle on 2020-2023.
+// Modifications copyright (c) 2020-2023 Oracle and/or its affiliates.
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Use, modification and distribution is subject to the Boost Software License,
@@ -19,18 +20,12 @@
 #include <boost/geometry/algorithms/detail/select_geometry_type.hpp>
 
 #include <boost/geometry/core/coordinate_type.hpp>
-#include <boost/geometry/core/cs.hpp>
-#include <boost/geometry/core/geometry_types.hpp>
-#include <boost/geometry/core/tag.hpp>
-#include <boost/geometry/core/tags.hpp>
 
 #include <boost/geometry/strategies/area/services.hpp>
 #include <boost/geometry/strategies/default_strategy.hpp>
 #include <boost/geometry/strategies/detail.hpp>
 
 #include <boost/geometry/util/select_most_precise.hpp>
-#include <boost/geometry/util/sequence.hpp>
-#include <boost/geometry/util/type_traits.hpp>
 
 namespace boost { namespace geometry
 {
@@ -77,11 +72,11 @@ template <typename Curr, typename Next>
 struct more_precise_coordinate_type
     : std::is_same
         <
-            typename geometry::coordinate_type<Curr>::type,
+            geometry::coordinate_type_t<Curr>,
             typename geometry::select_most_precise
                 <
-                    typename geometry::coordinate_type<Curr>::type,
-                    typename geometry::coordinate_type<Next>::type
+                    geometry::coordinate_type_t<Curr>,
+                    geometry::coordinate_type_t<Next>
                 >::type
         >
 {};

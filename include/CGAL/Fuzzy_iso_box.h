@@ -22,10 +22,6 @@
 #include <CGAL/Kd_tree_rectangle.h>
 #include <CGAL/Search_traits_adapter.h>
 
-#include <boost/mpl/if.hpp>
-#include <boost/type_traits/remove_cv.hpp>
-#include <boost/type_traits/remove_reference.hpp>
-
 #include <type_traits>
 
 
@@ -63,9 +59,8 @@ namespace CGAL {
 
     private:
 
-    typename boost::remove_cv<
-      typename boost::remove_reference< typename Construct_min_vertex_d::result_type >::type
-      >::type min, max;
+    CGAL::cpp20::remove_cvref_t<std::invoke_result_t<Construct_min_vertex_d, Iso_box_d> > min;
+    CGAL::cpp20::remove_cvref_t<std::invoke_result_t<Construct_max_vertex_d, Iso_box_d> > max;
     Cartesian_const_iterator_d min_begin, max_begin;
     FT eps;
     unsigned int dim;

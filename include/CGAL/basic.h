@@ -20,7 +20,9 @@
 
 #include <CGAL/config.h>
 
+#ifndef CGAL_NO_IOSTREAM
 #include <iostream>
+#endif
 #include <cstdlib>
 
 #include <CGAL/assertions.h>

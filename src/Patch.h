@@ -8,10 +8,14 @@ public:
 	vector<Point> points;
 	vector<Face> faces;
 	map<double, int> feature_map;
-	feature_t* feature_value = nullptr;
-	float* feature_weight = nullptr;
+	vector<feature_t> feature_value;  // Use vector for automatic memory management
+	vector<float> feature_weight;     // Use vector for automatic memory management
 	bool valid = true;
 	int seednode = 0;
+
+	// Default constructor, copy, move all handled automatically by compiler
+	// because all members are now RAII types (vectors, map)
+
 	Point computeCentroid()
 	{
 

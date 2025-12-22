@@ -29,7 +29,9 @@
 #include <CGAL/exceptions.h>
 
 #include <cstdlib>
+#ifndef CGAL_NO_IOSTREAM
 #include <iostream>
+#endif
 
 namespace CGAL {
 
@@ -83,6 +85,7 @@ _standard_error_handler(
     if (get_static_error_behaviour() == THROW_EXCEPTION)
         return;
 #endif
+#ifndef CGAL_NO_IOSTREAM
     std::cerr << "CGAL error: " << what << " violation!" << std::endl
          << "Expression : " << expr << std::endl
          << "File       : " << file << std::endl
@@ -90,6 +93,9 @@ _standard_error_handler(
          << "Explanation: " << msg << std::endl
          << "Refer to the bug-reporting instructions at https://www.cgal.org/bug_report.html"
          << std::endl;
+#else
+    (void)what; (void)expr; (void)file; (void)line; (void)msg;
+#endif
 }
 
 
@@ -108,6 +114,7 @@ _standard_warning_handler( const char *,
     if (get_static_warning_behaviour() == THROW_EXCEPTION)
         return;
 #endif
+#ifndef CGAL_NO_IOSTREAM
     std::cerr << "CGAL warning: check violation!" << std::endl
          << "Expression : " << expr << std::endl
          << "File       : " << file << std::endl
@@ -115,6 +122,9 @@ _standard_warning_handler( const char *,
          << "Explanation: " << msg << std::endl
          << "Refer to the bug-reporting instructions at https://www.cgal.org/bug_report.html"
          << std::endl;
+#else
+    (void)expr; (void)file; (void)line; (void)msg;
+#endif
 }
 
 } // anonymous namespace

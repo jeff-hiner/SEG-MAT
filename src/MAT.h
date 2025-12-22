@@ -95,7 +95,7 @@ private:
 	bool checkPointCloudGrowing(int i, int j, float growing_threshold);
 
 	//earth mover distance compuatation functions
-	signature_t getPatchSignature(Patch p1);
+	signature_t getPatchSignature(const Patch& p1);
 	void setPatchEMD(int num, vector<Patch>& patches);
 	float getMaxEmd(vector<vector<float>> emd_values);
 

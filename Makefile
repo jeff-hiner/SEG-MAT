@@ -13,18 +13,26 @@ EMCC = $(EMSDK)/upstream/emscripten/em++.bat
 
 # Compiler settings
 CXX = $(EMCC)
-CXXFLAGS = -std=c++17 -Wall -Wextra
+# EIGEN_NO_IO: Disable iostream includes in Eigen (reduces C++ static init overhead)
+# GDIAM_QUIET: Disable debug output in gdiam.cpp (also removes iostream dependency)
+# CGAL_NO_IOSTREAM: Disable iostream includes in CGAL (avoids C++ static init in WASM)
+# CGAL_DISABLE_ROUNDING_MATH_CHECK: WASM doesn't support FPU rounding mode control
+CXXFLAGS = -std=c++17 -Wall -Wextra -DEIGEN_NO_IO -DGDIAM_QUIET -DCGAL_NO_IOSTREAM -DCGAL_DISABLE_ROUNDING_MATH_CHECK
 OPT ?= -O2
 
 # Include paths
 INCLUDES = -Isrc -Isrc/emd -Isrc/graphcut -Isrc/ombb -Iinclude
 
 # Linker flags for WASM
+# STACK_SIZE: Default 64KB is too small - emd.cpp:russel() allocates ~82KB on stack
+# STACK_OVERFLOW_CHECK=2: Runtime stack checks (requires calling __wasm_call_ctors + emscripten_stack_init)
 LDFLAGS = -sWASM=1 \
           -sEXPORTED_FUNCTIONS="['_wasm_malloc','_wasm_free','_segmat_segment']" \
           -sEXPORTED_RUNTIME_METHODS="['ccall','cwrap']" \
           -sALLOW_MEMORY_GROWTH=0 \
-          -sINITIAL_MEMORY=134217728
+          -sINITIAL_MEMORY=134217728 \
+          -sSTACK_SIZE=2097152 \
+          -sSTACK_OVERFLOW_CHECK=2
 
 # Output
 TARGET = segmat_buffer.js

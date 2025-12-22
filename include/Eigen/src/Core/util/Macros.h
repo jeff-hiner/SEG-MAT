@@ -1008,7 +1008,9 @@
   #else
     // work around bug 89
     #include <cstdlib>   // for abort
+    #ifndef EIGEN_NO_IO
     #include <iostream>  // for std::cerr
+    #endif
 
     namespace Eigen {
     namespace internal {
@@ -1017,11 +1019,18 @@
     namespace {
     EIGEN_DONT_INLINE bool copy_bool(bool b) { return b; }
     }
+    #ifdef EIGEN_NO_IO
+    inline void assert_fail(const char * /*condition*/, const char * /*function*/, const char * /*file*/, int /*line*/)
+    {
+      abort();
+    }
+    #else
     inline void assert_fail(const char *condition, const char *function, const char *file, int line)
     {
       std::cerr << "assertion failed: " << condition << " in function " << function << " at " << file << ":" << line << std::endl;
       abort();
     }
+    #endif
     }
     }
     #define eigen_plain_assert(x) \

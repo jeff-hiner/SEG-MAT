@@ -56,7 +56,9 @@
 #include "src/Core/util/ReenableStupidWarnings.h"
 
 // Eigen2 used to include iostream
+#ifndef EIGEN_NO_IO
 #include<iostream>
+#endif
 
 #define EIGEN_USING_MATRIX_TYPEDEFS_FOR_TYPE_AND_SIZE(TypeSuffix, SizeSuffix) \
 using Eigen::Matrix##SizeSuffix##TypeSuffix; \

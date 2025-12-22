@@ -560,7 +560,9 @@ namespace cpp11{
 #include <cstdlib>
 #include <string>
 #include <fstream>
+#ifndef CGAL_NO_IOSTREAM
 #include <iostream>
+#endif
 
 namespace CGAL {
 
@@ -595,6 +597,7 @@ inline std::string data_file_path(const std::string& filename)
  { res+=std::string("/"); }
  res+=filename;
 
+#ifndef CGAL_NO_IOSTREAM
  // Test if the file exists, write a warning otherwise
  std::ifstream f(res);
  if (!f)
@@ -602,6 +605,7 @@ inline std::string data_file_path(const std::string& filename)
    std::cerr<<"[WARNING] file "<<res<<" does not exist or cannot be read "
             <<"(CGAL_DATA_DIR='"<<cgal_dir_string<<"')."<<std::endl;
  }
+#endif
 
 #ifdef _MSC_VER
  if (cgal_dir_windows!=nullptr)

@@ -46,7 +46,9 @@
 #include  <memory.h>
 #include  <math.h>
 
+#ifndef GDIAM_QUIET
 #include  <iostream>
+#endif
 #include  <vector>
 #include  <algorithm>
 

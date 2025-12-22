@@ -34,7 +34,9 @@
 #define EIGEN_LLT_MKL_H
 
 #include "Eigen/src/Core/util/MKL_support.h"
+#ifndef EIGEN_NO_IO
 #include <iostream>
+#endif
 
 namespace Eigen { 
 

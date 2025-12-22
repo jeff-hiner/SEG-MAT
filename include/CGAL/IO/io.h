@@ -31,7 +31,9 @@
 #include <cctype>
 #include <string>
 #include <locale>
+#ifndef CGAL_NO_IOSTREAM
 #include <iostream>
+#endif
 #include <optional>
 #include <variant>
 

@@ -1,16 +1,26 @@
 #include "MAT.h"
 
 //EMD compuatation
-signature_t MAT::getPatchSignature(Patch p1)
+// MUST take by reference - returning pointers to vector data requires the source to stay alive
+signature_t MAT::getPatchSignature(const Patch& p1)
 {
-	int pa1_item_num = p1.feature_map.size();
+	int pa1_item_num = static_cast<int>(p1.feature_map.size());
 	// Safety check for empty patches or unallocated arrays
-	if (pa1_item_num == 0 || p1.feature_value == nullptr || p1.feature_weight == nullptr) {
+	if (pa1_item_num == 0 || p1.feature_value.empty() || p1.feature_weight.empty()) {
 		signature_t empty = { 0, nullptr, nullptr };
 		return empty;
 	}
-	feature_t* pa1_f = p1.feature_value;
-	float* weight1 = p1.feature_weight;
+	// CRITICAL: Verify size consistency - n must match actual vector sizes
+	// If these don't match, emd() will access out-of-bounds memory
+	if (static_cast<size_t>(pa1_item_num) != p1.feature_value.size() ||
+	    static_cast<size_t>(pa1_item_num) != p1.feature_weight.size()) {
+		// Size mismatch - return empty signature to avoid crash
+		signature_t empty = { 0, nullptr, nullptr };
+		return empty;
+	}
+	// const_cast needed because signature_t expects non-const pointers
+	feature_t* pa1_f = const_cast<feature_t*>(p1.feature_value.data());
+	float* weight1 = const_cast<float*>(p1.feature_weight.data());
 	signature_t s1 = { pa1_item_num, pa1_f, weight1 };
 	return s1;
 }
@@ -33,8 +43,8 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 	{
 		// Clear previous EMD data to avoid accumulation across iterations
 		patches[i].feature_map.clear();
-		patches[i].feature_value = nullptr;
-		patches[i].feature_weight = nullptr;
+		patches[i].feature_value.clear();
+		patches[i].feature_weight.clear();
 
 		// Skip empty patches
 		if (patches[i].points.empty()) continue;
@@ -63,24 +73,20 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 		// Skip patches with no features
 		if (patches[i].feature_map.empty()) continue;
 
-		patches[i].feature_value = new feature_t[patches[i].feature_map.size()];
-		map<double, int>::iterator iter;
-		int count = 0;
-		for (iter = patches[i].feature_map.begin(); iter != patches[i].feature_map.end(); iter++)
-			*(patches[i].feature_value + count++) = iter->first;
+		patches[i].feature_value.reserve(patches[i].feature_map.size());
+		for (auto iter = patches[i].feature_map.begin(); iter != patches[i].feature_map.end(); iter++)
+			patches[i].feature_value.push_back(iter->first);
 	}
 	for (size_t i = 0; i < patches.size(); i++)
 	{
 		// Skip patches with no features or empty points
 		if (patches[i].feature_map.empty() || patches[i].points.empty()) continue;
 
-		patches[i].feature_weight = new float[patches[i].feature_map.size()];
-		map<double, int>::iterator iter;
-		int count = 0;
-		for (iter = patches[i].feature_map.begin(); iter != patches[i].feature_map.end(); iter++)
-			*(patches[i].feature_weight + count++) = iter->second / (float)patches[i].points.size();
+		patches[i].feature_weight.reserve(patches[i].feature_map.size());
+		for (auto iter = patches[i].feature_map.begin(); iter != patches[i].feature_map.end(); iter++)
+			patches[i].feature_weight.push_back(iter->second / static_cast<float>(patches[i].points.size()));
 	}
-};
+}
 float MAT::getMaxEmd(vector<vector<float>> emd_values)
 {
 	float max_emd_value = 0;

@@ -1,4 +1,5 @@
 #include "MAT.h"
+#include <cmath>
 
 
 //initialize MAT through loading file
@@ -723,7 +724,7 @@ vector<vector<float>> MAT::buildEmdGraph()
 
 	for (int i = 0; i < patches_num; i++)
 	{
-		Patch pa1 = dense_patch[i];
+		const Patch& pa1 = dense_patch[i];  // Reference - no copy
 		signature_t s1 = getPatchSignature(pa1);
 
 		// Skip if signature is invalid
@@ -731,7 +732,7 @@ vector<vector<float>> MAT::buildEmdGraph()
 
 		for (int j = 1; j < patches_num; j++)
 		{
-			Patch pa2 = dense_patch[j];
+			const Patch& pa2 = dense_patch[j];  // Reference - no copy
 			signature_t s2 = getPatchSignature(pa2);
 
 			// Skip if signature is invalid
@@ -745,7 +746,7 @@ vector<vector<float>> MAT::buildEmdGraph()
 		}
 	}
 	return emd_values;
-};
+}
 
 //Visiblity for merging: build a graph with edges indicating if the visibility of two patches exceeds a vis-ratio 
 vector<vector<int>> MAT::buildVisGraph(vector<Patch> patches, double vis)
@@ -1061,21 +1062,16 @@ void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& e
 		if (visit[i] == 1)
 			continue;
 
-		vector<Patch> coarse_subgroup;
-		vector<Patch> dense_subgroup;
+		// Use indices instead of copying full Patches - saves memory
+		vector<int> subgroup_indices;
 		q.push(i);
 		visit[i] = 1;
 
 		while (!q.empty())
 		{
 			int now = q.front();
-			//get final patches based on coarse patch or dense patch
-			if (now >= 0 && now < static_cast<int>(dense_patch.size())) {
-				dense_subgroup.push_back(dense_patch[now]);
-			}
-			if (now >= 0 && now < static_cast<int>(coarse_patch.size())) {
-				coarse_subgroup.push_back(coarse_patch[now]);
-			}
+			// Collect indices of patches to merge
+			subgroup_indices.push_back(now);
 			for (size_t j = 0; j < patchgraph[now].size(); j++)
 			{
 				int next_idx = patchgraph[now][j];
@@ -1090,19 +1086,26 @@ void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& e
 
 		Patch newPatch_dense;
 		Patch newPatch_coarse;
-		for (size_t j = 0; j < dense_subgroup.size(); j++)
+		// Merge patches using indices - only access points and faces
+		for (size_t j = 0; j < subgroup_indices.size(); j++)
 		{
-			newPatch_dense.points.insert(newPatch_dense.points.end(), dense_subgroup[j].points.begin(), dense_subgroup[j].points.end());
-			newPatch_dense.faces.insert(newPatch_dense.faces.end(), dense_subgroup[j].faces.begin(), dense_subgroup[j].faces.end());
-		}
-		for (size_t j = 0; j < coarse_subgroup.size(); j++)
-		{
-			newPatch_coarse.points.insert(newPatch_coarse.points.end(), coarse_subgroup[j].points.begin(), coarse_subgroup[j].points.end());
-			newPatch_coarse.faces.insert(newPatch_coarse.faces.end(), coarse_subgroup[j].faces.begin(), coarse_subgroup[j].faces.end());
+			int idx = subgroup_indices[j];
+			if (idx >= 0 && idx < static_cast<int>(dense_patch.size())) {
+				newPatch_dense.points.insert(newPatch_dense.points.end(),
+					dense_patch[idx].points.begin(), dense_patch[idx].points.end());
+				newPatch_dense.faces.insert(newPatch_dense.faces.end(),
+					dense_patch[idx].faces.begin(), dense_patch[idx].faces.end());
+			}
+			if (idx >= 0 && idx < static_cast<int>(coarse_patch.size())) {
+				newPatch_coarse.points.insert(newPatch_coarse.points.end(),
+					coarse_patch[idx].points.begin(), coarse_patch[idx].points.end());
+				newPatch_coarse.faces.insert(newPatch_coarse.faces.end(),
+					coarse_patch[idx].faces.begin(), coarse_patch[idx].faces.end());
+			}
 		}
 
-		temp_dense_patch.push_back(newPatch_dense);
-		temp_coarse_patch.push_back(newPatch_coarse);
+		temp_dense_patch.push_back(std::move(newPatch_dense));
+		temp_coarse_patch.push_back(std::move(newPatch_coarse));
 
 	}
 	//get final segmentation

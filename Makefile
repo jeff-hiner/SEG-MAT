@@ -17,7 +17,8 @@ CXX = $(EMCC)
 # GDIAM_QUIET: Disable debug output in gdiam.cpp (also removes iostream dependency)
 # CGAL_NO_IOSTREAM: Disable iostream includes in CGAL (avoids C++ static init in WASM)
 # CGAL_DISABLE_ROUNDING_MATH_CHECK: WASM doesn't support FPU rounding mode control
-CXXFLAGS = -std=c++17 -Wall -Wextra -DEIGEN_NO_IO -DGDIAM_QUIET -DCGAL_NO_IOSTREAM -DCGAL_DISABLE_ROUNDING_MATH_CHECK
+# -Werror: Treat warnings as errors to keep the build clean
+CXXFLAGS = -std=c++17 -Wall -Wextra -Werror -DEIGEN_NO_IO -DGDIAM_QUIET -DCGAL_NO_IOSTREAM -DCGAL_DISABLE_ROUNDING_MATH_CHECK
 OPT ?= -O2
 
 # Include paths

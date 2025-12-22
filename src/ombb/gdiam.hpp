@@ -22,7 +22,9 @@
 
 #ifndef  __GDIAM__H
 #define  __GDIAM__H
+#ifndef GDIAM_QUIET
 #define GDIAM_QUIET
+#endif
 
 
 /* for g++ to quell warnings */

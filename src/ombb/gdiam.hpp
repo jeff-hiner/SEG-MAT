@@ -417,7 +417,8 @@ public:
             sum += sqrt( val );
         }
         //printf( "sum: %g, %g\n", sum, get_diam() );
-        
+        (void)sum;  // Suppress unused variable warning - kept for potential debug use
+
         // sum = squard diameter of the bounding box
         // prod = length of projection of the diameter of cube on the
         //      direction.
@@ -740,8 +741,7 @@ GDIAM_EXPORT gdiam_bbox   gdiam_approx_const_mvbb( gdiam_point  * start, int  si
                                       gdiam_real  eps, 
                                       GBBox  * p_ap_bbox );    
 GDIAM_EXPORT gdiam_point  * gdiam_convert( gdiam_real  * start, int  size );
-GDIAM_EXPORT gdiam_bbox   gdiam_approx_mvbb( gdiam_point  * start, int  size,
-                                gdiam_real  eps ) ;
+GDIAM_EXPORT gdiam_bbox   gdiam_approx_mvbb( gdiam_point  * start, int  size );
 GDIAM_EXPORT gdiam_bbox   gdiam_approx_mvbb_grid( gdiam_point  * start, int  size,
                                      int  grid_size );
 GDIAM_EXPORT gdiam_bbox   gdiam_approx_mvbb_grid_sample( gdiam_point  * start, int  size,

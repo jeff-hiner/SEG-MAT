@@ -841,6 +841,7 @@ static void addBasicVariable(int minI, int minJ, double *S, double *D,
 
 
 
+#if DEBUG_LEVEL > 2
 /**********************
 printSolution
 **********************/
@@ -851,18 +852,15 @@ static void printSolution()
 
 	totalCost = 0;
 
-#if DEBUG_LEVEL > 2
 	printf("SIG1\tSIG2\tFLOW\tCOST\n");
-#endif
 	for (P = _X; P < _EndX; P++)
 		if (P != _EnterX && _IsX[P->i][P->j])
 		{
-#if DEBUG_LEVEL > 2
 			printf("%d\t%d\t%f\t%f\n", P->i, P->j, P->val, _C[P->i][P->j]);
-#endif
 			totalCost += (double)P->val * _C[P->i][P->j];
 		}
 
 	printf("COST = %f\n", totalCost);
 }
+#endif
 

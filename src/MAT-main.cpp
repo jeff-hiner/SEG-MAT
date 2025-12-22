@@ -2,7 +2,7 @@
 
 
 //initialize MAT through loading file
-MAT::MAT(string matfile, Mesh& mesh)
+MAT::MAT(string matfile)
 {
 	ifstream fin(matfile);
 	string null, type, s1, s2, s3, s4;
@@ -13,7 +13,6 @@ MAT::MAT(string matfile, Mesh& mesh)
 	this->faces.reserve(8000);
 	double maxr = 0;
 	double xsum = 0, ysum = 0, zsum = 0;
-	int count = 0;
 	while (fin >> type)
 	{
 		if (type == "v")
@@ -65,12 +64,11 @@ MAT::MAT(string matfile, Mesh& mesh)
 	}
 
 	//find pure edges (edges that are not the sides of faces)
-	vector<Edge> pedges;
-	for (int i = 0; i < this->edges.size(); i++)
+	for (size_t i = 0; i < this->edges.size(); i++)
 	{
 		Edge e = this->edges[i];
 		bool pure_edge = true;
-		for (int j = 0; j < this->faces.size(); j++)
+		for (size_t j = 0; j < this->faces.size(); j++)
 		{
 			Face f = this->faces[j];
 			if (checkEdgeOnFace(e, f))
@@ -179,11 +177,11 @@ bool MAT::StructureDecompose(float is_thin)
 
 	bool linesheets = true;
 
-	for (int i = 0; i < faces.size(); i++)
+	for (size_t i = 0; i < faces.size(); i++)
 	{
 		if (visit[i] != 0)continue;
 		vector<Face> subgroup;
-		q.push(i);
+		q.push(static_cast<int>(i));
 		visit[i] = 1;
 
 		vector<int> temp_visit;
@@ -194,13 +192,11 @@ bool MAT::StructureDecompose(float is_thin)
 			int now = q.front();
 			visit[now] = 1;
 			subgroup.push_back(faces[now]);
-			Face f1 = faces[now];
-			for (int j = 0; j < graph[now].size(); j++)
+			for (size_t j = 0; j < graph[now].size(); j++)
 			{
 
 				if (visit[graph[now][j]] == 0)
 				{
-					Face f2 = faces[graph[now][j]];
 					q.push(graph[now][j]);
 					visit[graph[now][j]] = 1;
 					temp_visit.push_back(graph[now][j]);
@@ -225,15 +221,14 @@ bool MAT::StructureDecompose(float is_thin)
 
 				double sumlength = 0;
 				double maxr = 0;
-				for (int k = 0; k < subgroup.size(); k++)
+				for (size_t k = 0; k < subgroup.size(); k++)
 				{
 					double r0 = safe_radius(subgroup[k][0]);
 					double r1 = safe_radius(subgroup[k][1]);
 					maxr = r0 > maxr ? r0 : maxr;
 					maxr = r1 > maxr ? r1 : maxr;
 				}
-				double sumr = 0;
-				for (int j = 0; j < subgroup.size(); j++)
+				for (size_t j = 0; j < subgroup.size(); j++)
 				{
 					Point p1 = subgroup[j][0], p2 = subgroup[j][1];
 					Edge segment_query(p1, p2);
@@ -261,7 +256,7 @@ bool MAT::StructureDecompose(float is_thin)
 				{
 					double sumsize = 0;
 					double maxr = 0;
-					for (int k = 0; k < subgroup.size(); k++)
+					for (size_t k = 0; k < subgroup.size(); k++)
 					{
 						double r0 = safe_radius(subgroup[k][0]);
 						double r1 = safe_radius(subgroup[k][1]);
@@ -271,7 +266,7 @@ bool MAT::StructureDecompose(float is_thin)
 						maxr = r2 > maxr ? r2 : maxr;
 					}
 
-					for (int j = 0; j < subgroup.size(); j++)
+					for (size_t j = 0; j < subgroup.size(); j++)
 					{
 						sumsize += compute_triangle_area(subgroup[j]);
 					}
@@ -300,7 +295,7 @@ bool MAT::StructureDecompose(float is_thin)
 		else
 		{
 			//restore the visited nodes
-			for (int j = 0; j < temp_visit.size(); j++)
+			for (size_t j = 0; j < temp_visit.size(); j++)
 			{
 				visit[temp_visit[j]] = 0;
 			}
@@ -312,13 +307,13 @@ bool MAT::StructureDecompose(float is_thin)
 	if (structure_face_group.size() == 1 && structure_face_group[0][0].is_degenerate())
 		linesheets = false;
 
-	for (int i = 0; i < structure_face_group.size(); i++)
+	for (size_t i = 0; i < structure_face_group.size(); i++)
 	{
 
 		set<Point> points_set;
 		Patch patch;
 		patch.faces = structure_face_group[i];
-		for (int j = 0; j < structure_face_group[i].size(); j++)
+		for (size_t j = 0; j < structure_face_group[i].size(); j++)
 		{
 			Face f = structure_face_group[i][j];
 			points_set.insert(f[0]);
@@ -331,13 +326,13 @@ bool MAT::StructureDecompose(float is_thin)
 		thin_parts.push_back(patch);
 	}
 
-	for (int i = 0; i < non_structure_face_group.size(); i++)
+	for (size_t i = 0; i < non_structure_face_group.size(); i++)
 	{
 
 		set<Point> points_set;
 		Patch patch;
 		patch.faces = non_structure_face_group[i];
-		for (int j = 0; j < non_structure_face_group[i].size(); j++)
+		for (size_t j = 0; j < non_structure_face_group[i].size(); j++)
 		{
 			Face f = non_structure_face_group[i][j];
 			points_set.insert(f[0]);
@@ -358,10 +353,10 @@ bool MAT::StructureDecompose(float is_thin)
 //densify the joints on SMAT for better accuracy
 void MAT::densify(vector<Patch>& patches, MAT& mat, int interpolation)
 {
-	float step = 1.0f / double(interpolation);
-	for (int i = 0; i < patches.size(); i++)
+	float step = 1.0f / static_cast<double>(interpolation);
+	for (size_t i = 0; i < patches.size(); i++)
 	{
-		for (int j = 0; j < patches[i].faces.size(); j++)
+		for (size_t j = 0; j < patches[i].faces.size(); j++)
 		{
 			Face f = patches[i].faces[j];
 			Point p1 = f[0];
@@ -417,20 +412,20 @@ void MAT::densify(vector<Patch>& patches, MAT& mat, int interpolation)
 vector<int> MAT::transfer_SMAT_MAT(vector<Patch>& thin_parts, vector<Patch>& normal_parts)
 {
 
-	int graphsize = faces.size();
+	size_t graphsize = faces.size();
 	vector<int> tags(graphsize, 0);
-	int snum = thin_parts.size();
+	size_t snum = thin_parts.size();
 
-	for (int i = 0; i < graphsize; i++)
+	for (size_t i = 0; i < graphsize; i++)
 	{
 		Point cp1 = CGAL::centroid(faces[i]);
 		double mindis = 9999999.9f;
-		int minindex = 0;
+		size_t minindex = 0;
 
-		for (int k = 0; k < thin_parts.size(); k++)
+		for (size_t k = 0; k < thin_parts.size(); k++)
 		{
 			Patch pa = thin_parts[k];
-			for (int j = 0; j < pa.points.size(); j++)
+			for (size_t j = 0; j < pa.points.size(); j++)
 			{
 				Point nowp = pa.points[j];
 				double dis = pow(CGAL::squared_distance(cp1, nowp), 0.5);
@@ -442,10 +437,10 @@ vector<int> MAT::transfer_SMAT_MAT(vector<Patch>& thin_parts, vector<Patch>& nor
 			}
 		}
 
-		for (int k = 0; k < normal_parts.size(); k++)
+		for (size_t k = 0; k < normal_parts.size(); k++)
 		{
 			Patch pa = normal_parts[k];
-			for (int j = 0; j < pa.points.size(); j++)
+			for (size_t j = 0; j < pa.points.size(); j++)
 			{
 				Point nowp = pa.points[j];
 				double dis = pow(CGAL::squared_distance(cp1, nowp), 0.5);
@@ -474,7 +469,7 @@ vector<int> MAT::transfer_SMAT_MAT(vector<Patch>& thin_parts, vector<Patch>& nor
 vector<vector<int>> MAT::buildMATGraph_pc(int N)
 {
 	std::list<Point> pc;
-	for (int i = 0; i < points.size(); i++)
+	for (size_t i = 0; i < points.size(); i++)
 		pc.push_back(Point(points[i][0], points[i][1], points[i][2]));
 
 	NNTree tree(pc.begin(), pc.end());
@@ -520,7 +515,6 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 	vector<int> seed_nodes;
 
 	vector<face_node> sorted_face;
-	double max_r = 0;
 	int max_face_index = 0;
 	for (int i = 0; i < graphsize; i++)
 	{
@@ -534,8 +528,7 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 	sort(sorted_face.begin(), sorted_face.end(), cmpf);
 
 	//region growing by finding the largest face
-	int regioncount = 0;
-	for (int k = 0; k < sorted_face.size(); k++)
+	for (size_t k = 0; k < sorted_face.size(); k++)
 	{
 
 		if (visit[sorted_face[k].index] == 0)
@@ -559,13 +552,11 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 		{
 			int now = q.front();
 			subgroup.push_back(faces[now]);
-			Face f1 = faces[now];
-			for (int j = 0; j < graph[now].size(); j++)
+			for (size_t j = 0; j < graph[now].size(); j++)
 			{
 
 				if (visit[graph[now][j]] == 0)
 				{
-					Face f2 = faces[graph[now][j]];
 					if (!is_pointcloud) {
 						if (checkFaceGrowing(tags[now], tags[graph[now][j]], now, graph[now][j], growing_threshold))
 						{
@@ -593,12 +584,8 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 		//dealing with the group with enough faces
 		if (subgroup_size_now >= min_matp_num)
 		{
-
-			regioncount++;
-			//cout << "Region:" << regioncount<<" Size:"<<subgroup_size_now << endl;
 			seed_nodes.push_back(seedNode);
 			dense_subgroup.insert(dense_subgroup.end(), subgroup.begin(), subgroup.end());
-			double group_mean_r = compute_group_mean_r(subgroup);
 
 			//Swallowing: find the MAT faces contained in this grown area
 			for (int i = 0; i < graphsize; i++)
@@ -620,7 +607,7 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 		else
 		{
 			//restore the visited nodes
-			for (int i = 0; i < temp_visit.size(); i++)
+			for (size_t i = 0; i < temp_visit.size(); i++)
 			{
 				visit[temp_visit[i]] = 0;
 			}
@@ -630,7 +617,7 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 
 	//find unreached faces as tinny patches
 	queue<int> unreach_q;
-	for (int i = 0; i < graphsize; i++)
+	for (size_t i = 0; i < static_cast<size_t>(graphsize); i++)
 	{
 		if (visit[i] == 0)
 		{
@@ -640,13 +627,11 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 			{
 				int now = unreach_q.front();
 				tiny_subgroup.push_back(faces[now]);
-				Face f1 = faces[now];
-				for (int j = 0; j < graph[now].size(); j++)
+				for (size_t j = 0; j < graph[now].size(); j++)
 				{
 
 					if (visit[graph[now][j]] == 0)
 					{
-						Face f2 = faces[graph[now][j]];
 						unreach_q.push(graph[now][j]);
 						visit[graph[now][j]] = 1;
 					}
@@ -659,13 +644,13 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 
 
 	//generate coarse patches from group
-	for (int i = 0; i < coarse_face_group.size(); i++)
+	for (size_t i = 0; i < coarse_face_group.size(); i++)
 	{
 		set<Point> points_set;
 		Patch patch;
 		//patch.seednode = seed_nodes[i];
 		patch.faces = coarse_face_group[i];
-		for (int j = 0; j < coarse_face_group[i].size(); j++)
+		for (size_t j = 0; j < coarse_face_group[i].size(); j++)
 		{
 			Face f = coarse_face_group[i][j];
 			points_set.insert(f[0]);
@@ -680,12 +665,12 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 	}
 
 	//generate dense patches from group
-	for (int i = 0; i < dense_face_group.size(); i++)
+	for (size_t i = 0; i < dense_face_group.size(); i++)
 	{
 		set<Point> points_set;
 		Patch patch;
 		patch.faces = dense_face_group[i];
-		for (int j = 0; j < dense_face_group[i].size(); j++)
+		for (size_t j = 0; j < dense_face_group[i].size(); j++)
 		{
 			Face f = dense_face_group[i][j];
 			points_set.insert(f[0]);
@@ -700,12 +685,12 @@ void MAT::RegionGrowing(vector<vector<int>>& graph, vector<int>& tags, float gro
 	}
 
 	//generate unreached tiny patches
-	for (int i = 0; i < tiny_face_group.size(); i++)
+	for (size_t i = 0; i < tiny_face_group.size(); i++)
 	{
 		set<Point> points_set;
 		Patch patch;
 		patch.faces = tiny_face_group[i];
-		for (int j = 0; j < tiny_face_group[i].size(); j++)
+		for (size_t j = 0; j < tiny_face_group[i].size(); j++)
 		{
 			Face f = tiny_face_group[i][j];
 			points_set.insert(f[0]);
@@ -729,13 +714,12 @@ float dist(feature_t *F1, feature_t *F2) {
 	return abs(*F1 - *F2);
 }
 //EMD graph for merging
-vector<vector<float>> MAT::buildEmdGraph(vector<vector<int>>& patchgraph)
+vector<vector<float>> MAT::buildEmdGraph()
 {
 	setPatchEMD(20, dense_patch);
 	int patches_num = dense_patch.size();
 
 	vector<vector<float>> emd_values(200, vector<float>(200, 0.0f));
-	float max_emd_value = 0.0f;
 
 	for (int i = 0; i < patches_num; i++)
 	{
@@ -769,10 +753,10 @@ vector<vector<int>> MAT::buildVisGraph(vector<Patch> patches, double vis)
 	double ratio = vis;
 	//intial graph
 	vector<vector<int>> patchgraph(patches.size());
-	for (int i = 0; i < patches.size(); i++)
+	for (size_t i = 0; i < patches.size(); i++)
 	{
 		Patch pa1 = patches[i];
-		for (int j = i + 1; j < patches.size(); j++)
+		for (size_t j = i + 1; j < patches.size(); j++)
 		{
 			Patch pa2 = patches[j];
 
@@ -785,7 +769,7 @@ vector<vector<int>> MAT::buildVisGraph(vector<Patch> patches, double vis)
 	}
 
 	vector<vector<int>> finalpatchgraph(patches.size());
-	for (int i = 0; i < patches.size(); i++)
+	for (size_t i = 0; i < patches.size(); i++)
 	{
 
 		//get all neighbors of i
@@ -793,7 +777,7 @@ vector<vector<int>> MAT::buildVisGraph(vector<Patch> patches, double vis)
 
 		set1.insert(patchgraph[i].begin(), patchgraph[i].end());
 
-		for (int j = 0; j < patchgraph[i].size(); j++)
+		for (size_t j = 0; j < patchgraph[i].size(); j++)
 		{
 			int k = patchgraph[i][j];
 
@@ -813,7 +797,7 @@ void MAT::MergeTinyPatches() {
 
 	setPatchEMD(20, tiny_patch);
 	setPatchEMD(20, dense_patch);
-	for (int i = 0; i < tiny_patch.size(); i++)
+	for (size_t i = 0; i < tiny_patch.size(); i++)
 	{
 		Patch tp = tiny_patch[i];
 		Point tp_c = tp.computeCentroid();
@@ -823,7 +807,7 @@ void MAT::MergeTinyPatches() {
 		//int min_index = -1;
 
 		vector<double> pointdis_list(dense_patch.size()), emddis_list(dense_patch.size());
-		for (int j = 0; j < dense_patch.size(); j++)
+		for (size_t j = 0; j < dense_patch.size(); j++)
 		{
 
 			Patch dp = dense_patch[j];
@@ -865,7 +849,7 @@ void MAT::MergeTinyPatches() {
 		int min_index = -1;
 
 		double min_totaldis = 99999.9f;
-		for (int j = 0; j < dense_patch.size(); j++)
+		for (size_t j = 0; j < dense_patch.size(); j++)
 		{
 			Patch dp = dense_patch[j];
 			if (!checkPatchConnect(tp, dp, 0))continue;
@@ -875,7 +859,7 @@ void MAT::MergeTinyPatches() {
 			if (totaldis < min_totaldis)
 			{
 				min_totaldis = totaldis;
-				min_index = j;
+				min_index = static_cast<int>(j);
 			}
 		}
 
@@ -884,14 +868,14 @@ void MAT::MergeTinyPatches() {
 		{
 			//then find the closest dense part to merge
 			double min_dis = 999999.999f;
-			for (int j = 0; j < dense_patch.size(); j++)
+			for (size_t j = 0; j < dense_patch.size(); j++)
 			{
 				Patch dp = dense_patch[j];
 				double nowdis = compute_patch_closest_euclidean_distance(tp, dp);
 				if (nowdis < min_dis)
 				{
 					min_dis = nowdis;
-					min_index = j;
+					min_index = static_cast<int>(j);
 				}
 			}
 		}
@@ -904,7 +888,7 @@ void MAT::MergeTinyPatches() {
 }
 // Version of buildEmdGraph for merged patches - must reinitialize EMD features
 // because MergePatches creates NEW Patch objects with nullptr feature arrays
-vector<vector<float>> MAT::buildEmdGraph_afterSetPatch(vector<Patch>& patches, vector<vector<int>>& patchgraph)
+vector<vector<float>> MAT::buildEmdGraph_afterSetPatch(vector<Patch>& patches)
 {
 	// Safety: ensure we have radius data
 	if (radius.empty()) {
@@ -964,23 +948,23 @@ void MAT::MergeIterations(bool use_vis)
 	else
 	{
 		patchgraph = vector<vector<int>>(dense_patch.size());
-		for (int i = 0; i < dense_patch.size(); i++)
+		for (size_t i = 0; i < dense_patch.size(); i++)
 		{
 			Patch pa1 = dense_patch[i];
-			for (int j = i + 1; j < dense_patch.size(); j++)
+			for (size_t j = i + 1; j < dense_patch.size(); j++)
 			{
 				Patch pa2 = dense_patch[j];
 
 				if (checkPatchConnect(pa1, pa2, 0))
 				{
-					patchgraph[i].push_back(j);
-					patchgraph[j].push_back(i);
+					patchgraph[i].push_back(static_cast<int>(j));
+					patchgraph[j].push_back(static_cast<int>(i));
 				}
 			}
 		}
 	}
 
-	vector<vector<float>> emdvalues = buildEmdGraph(patchgraph);
+	vector<vector<float>> emdvalues = buildEmdGraph();
 	float maxemd = getMaxEmd(emdvalues);
 	MergePatches(patchgraph, emdvalues, maxemd, emd1);
 
@@ -991,17 +975,17 @@ void MAT::MergeIterations(bool use_vis)
 	else
 	{
 		patchgraph = vector<vector<int>>(dense_patch.size());
-		for (int i = 0; i < dense_patch.size(); i++)
+		for (size_t i = 0; i < dense_patch.size(); i++)
 		{
 			Patch pa1 = dense_patch[i];
-			for (int j = i + 1; j < dense_patch.size(); j++)
+			for (size_t j = i + 1; j < dense_patch.size(); j++)
 			{
 				Patch pa2 = dense_patch[j];
 
 				if (checkPatchConnect(pa1, pa2, 0))
 				{
-					patchgraph[i].push_back(j);
-					patchgraph[j].push_back(i);
+					patchgraph[i].push_back(static_cast<int>(j));
+					patchgraph[j].push_back(static_cast<int>(i));
 				}
 			}
 		}
@@ -1009,7 +993,7 @@ void MAT::MergeIterations(bool use_vis)
 
 	// Use buildEmdGraph_afterSetPatch for iterations 2 and 3 - merged patches
 	// need their EMD features reinitialized since MergePatches creates new Patch objects
-	emdvalues = buildEmdGraph_afterSetPatch(dense_patch, patchgraph);
+	emdvalues = buildEmdGraph_afterSetPatch(dense_patch);
 	MergePatches(patchgraph, emdvalues, maxemd, emd2);
 
 	if (use_vis)
@@ -1019,23 +1003,23 @@ void MAT::MergeIterations(bool use_vis)
 	else
 	{
 		patchgraph = vector<vector<int>>(dense_patch.size());
-		for (int i = 0; i < dense_patch.size(); i++)
+		for (size_t i = 0; i < dense_patch.size(); i++)
 		{
 			Patch pa1 = dense_patch[i];
-			for (int j = i + 1; j < dense_patch.size(); j++)
+			for (size_t j = i + 1; j < dense_patch.size(); j++)
 			{
 				Patch pa2 = dense_patch[j];
 
 				if (checkPatchConnect(pa1, pa2, 0))
 				{
-					patchgraph[i].push_back(j);
-					patchgraph[j].push_back(i);
+					patchgraph[i].push_back(static_cast<int>(j));
+					patchgraph[j].push_back(static_cast<int>(i));
 				}
 			}
 		}
 	}
 
-	emdvalues = buildEmdGraph_afterSetPatch(dense_patch, patchgraph);
+	emdvalues = buildEmdGraph_afterSetPatch(dense_patch);
 	MergePatches(patchgraph, emdvalues, maxemd, emd3);
 }
 void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& emd_values, float max_emd, float merge_para)
@@ -1046,7 +1030,7 @@ void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& e
 		vector<int> kept_nodes;
 		Patch pa1 = dense_patch[i];
 
-		for (int j = 0; j < patchgraph[i].size(); j++)
+		for (size_t j = 0; j < patchgraph[i].size(); j++)
 		{
 			int pindex = patchgraph[i][j];
 			// Bounds check for pindex
@@ -1092,7 +1076,7 @@ void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& e
 			if (now >= 0 && now < static_cast<int>(coarse_patch.size())) {
 				coarse_subgroup.push_back(coarse_patch[now]);
 			}
-			for (int j = 0; j < patchgraph[now].size(); j++)
+			for (size_t j = 0; j < patchgraph[now].size(); j++)
 			{
 				int next_idx = patchgraph[now][j];
 				if (next_idx >= 0 && next_idx < graphsize && visit[next_idx] == 0)
@@ -1106,12 +1090,12 @@ void MAT::MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& e
 
 		Patch newPatch_dense;
 		Patch newPatch_coarse;
-		for (int j = 0; j < dense_subgroup.size(); j++)
+		for (size_t j = 0; j < dense_subgroup.size(); j++)
 		{
 			newPatch_dense.points.insert(newPatch_dense.points.end(), dense_subgroup[j].points.begin(), dense_subgroup[j].points.end());
 			newPatch_dense.faces.insert(newPatch_dense.faces.end(), dense_subgroup[j].faces.begin(), dense_subgroup[j].faces.end());
 		}
-		for (int j = 0; j < coarse_subgroup.size(); j++)
+		for (size_t j = 0; j < coarse_subgroup.size(); j++)
 		{
 			newPatch_coarse.points.insert(newPatch_coarse.points.end(), coarse_subgroup[j].points.begin(), coarse_subgroup[j].points.end());
 			newPatch_coarse.faces.insert(newPatch_coarse.faces.end(), coarse_subgroup[j].faces.begin(), coarse_subgroup[j].faces.end());
@@ -1136,8 +1120,7 @@ MAT::MAT(const float* vertices,
          const int32_t* edges_buf,
          int32_t edge_count,
          const int32_t* faces_buf,
-         int32_t face_count,
-         Mesh& mesh)
+         int32_t face_count)
 {
 	this->points.reserve(vertex_count);
 	this->radius.reserve(vertex_count);

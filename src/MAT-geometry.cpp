@@ -29,7 +29,7 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 	for (int i = 1; i <= num; i++)
 		marks[i] = marks[i - 1] + r_interval;
 
-	for (int i = 0; i < patches.size(); i++)
+	for (size_t i = 0; i < patches.size(); i++)
 	{
 		// Clear previous EMD data to avoid accumulation across iterations
 		patches[i].feature_map.clear();
@@ -39,13 +39,13 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 		// Skip empty patches
 		if (patches[i].points.empty()) continue;
 
-		for (int j = 0; j < patches[i].points.size(); j++)
+		for (size_t j = 0; j < patches[i].points.size(); j++)
 		{
 			Point p = patches[i].points[j];
 			//map to the closest marks
 			double min_mark_dis = 99999;
 			int min_mark_index = 0;
-			for (int k = 0; k < marks.size(); k++)
+			for (size_t k = 0; k < marks.size(); k++)
 			{
 				double now_dis = abs(marks[k] - safe_radius(p));
 				if (now_dis < min_mark_dis)
@@ -58,7 +58,7 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 		}
 	}
 	//set feature value
-	for (int i = 0; i < patches.size(); i++)
+	for (size_t i = 0; i < patches.size(); i++)
 	{
 		// Skip patches with no features
 		if (patches[i].feature_map.empty()) continue;
@@ -69,7 +69,7 @@ void MAT::setPatchEMD(int num, vector<Patch>& patches)
 		for (iter = patches[i].feature_map.begin(); iter != patches[i].feature_map.end(); iter++)
 			*(patches[i].feature_value + count++) = iter->first;
 	}
-	for (int i = 0; i < patches.size(); i++)
+	for (size_t i = 0; i < patches.size(); i++)
 	{
 		// Skip patches with no features or empty points
 		if (patches[i].feature_map.empty() || patches[i].points.empty()) continue;
@@ -110,10 +110,10 @@ bool MAT::checkPatchConnect(Patch& pa1, Patch& pa2, int mode)
 	//check by sphere intersection
 	if (mode == 0)
 	{
-		for (int i = 0; i < pa1.points.size(); i++)
+		for (size_t i = 0; i < pa1.points.size(); i++)
 		{
 			Point p1 = pa1.points[i];
-			for (int j = 0; j < pa2.points.size(); j++)
+			for (size_t j = 0; j < pa2.points.size(); j++)
 			{
 				Point p2 = pa2.points[j];
 				double center_dis = pow(CGAL::squared_distance(p1, p2), 0.5f);
@@ -128,10 +128,10 @@ bool MAT::checkPatchConnect(Patch& pa1, Patch& pa2, int mode)
 	//check by mat mesh
 	if (mode == 1)
 	{
-		for (int i = 0; i < pa1.faces.size(); i++)
+		for (size_t i = 0; i < pa1.faces.size(); i++)
 		{
 			Face f1 = pa1.faces[i];
-			for (int j = 0; j < pa2.faces.size(); j++)
+			for (size_t j = 0; j < pa2.faces.size(); j++)
 			{
 				Face f2 = pa2.faces[j];
 				if (checkMATTriangleConnect(f1, f2))
@@ -158,7 +158,7 @@ bool MAT::checkFaceCentroidContained(Face& f, vector<Face>& group)
 {
 	//check if face[ii] contained in this area
 	Point centerp = CGAL::centroid(f);
-	for (int i = 0; i < group.size(); i++)
+	for (size_t i = 0; i < group.size(); i++)
 	{
 		Face check_face = group[i];
 		for (int k = 0; k < 3; k++)
@@ -179,7 +179,7 @@ bool MAT::checkFacePointContained(Face& f, vector<Face>& group)
 	for (int n = 0; n < 3; n++)
 	{
 		Point fp = f[n];
-		for (int i = 0; i < group.size(); i++)
+		for (size_t i = 0; i < group.size(); i++)
 		{
 			Face check_face = group[i];
 			for (int k = 0; k < 3; k++)
@@ -247,12 +247,12 @@ bool MAT::checkMATtriangleStructureConnect(Face& f1, Face& f2)
 }
 bool MAT::checkManifold(vector<Face>& faces)
 {
-	for (int i = 0; i < faces.size(); i++)
+	for (size_t i = 0; i < faces.size(); i++)
 	{
 		Point p1 = faces[i][0], p2 = faces[i][1], p3 = faces[i][2];
 		Edge e1(p1, p2), e2(p2, p3), e3(p1, p3);
 		int e1count = 0, e2count = 0, e3count = 0;
-		for (int j = 0; j < faces.size(); j++)
+		for (size_t j = 0; j < faces.size(); j++)
 		{
 			if (j == i)continue;
 			Point pa = faces[j][0], pb = faces[j][1], pc = faces[j][2];
@@ -290,11 +290,11 @@ bool MAT::checkEdgeOnFace(Edge& e, Face& f)
 bool MAT::checkPatchVisibility(Patch& pa1, Patch& pa2, float visratio)
 {
 	int count = 0;
-	float d_smp = 3.0f; //downsample for effciency
-	float total = double(pa1.points.size() / d_smp * pa2.points.size() / d_smp);
+	constexpr size_t d_smp = 3; //downsample for efficiency
+	float total = static_cast<float>(pa1.points.size()) / d_smp * pa2.points.size() / d_smp;
 	float valid_count = total * visratio;
 
-	for (int i = 0; i < pa1.points.size(); i += d_smp)
+	for (size_t i = 0; i < pa1.points.size(); i += d_smp)
 	{
 		Point p1 = pa1.points[i];
 
@@ -309,7 +309,7 @@ bool MAT::checkPatchVisibility(Patch& pa1, Patch& pa2, float visratio)
 
 		//random sampling inside the sphere
 		Point np1 = p1 + v1 * (safe_radius(p1) * r_step1);
-		for (int j = 0; j < pa2.points.size(); j += d_smp)
+		for (size_t j = 0; j < pa2.points.size(); j += d_smp)
 		{
 			Point p2 = pa2.points[j];
 
@@ -351,7 +351,7 @@ bool MAT::checkPatchVisibility(Patch& pa1, Patch& pa2, float visratio)
 	else
 		return true;
 }
-bool MAT::checkFaceConvexwithTwoNormals(Face f1, Face f2, Vector3 n1, Vector3 n2)
+bool MAT::checkFaceConvexwithTwoNormals(Face f1, Face f2, Vector3 n1, Vector3 /*n2*/)
 {
 	Point p1 = CGAL::centroid(f1);
 	Point p2 = CGAL::centroid(f2);
@@ -389,7 +389,7 @@ bool MAT::checkFaceGrowing(int tag1, int tag2, int i, int j, float growing_thres
 		t = t * tag_ratio[tag1];
 	//a bulky part
 	else if (tag1 == tag2&&tag1 == 0)
-		t = t;
+		; // t unchanged
 	//a topological joint, stop growing
 	else if (tag1 != tag2)
 		t = 0;
@@ -424,7 +424,7 @@ bool MAT::checkPointCloudGrowing(int i, int j, float growing_threshold)
 //basic geometric computation
 void MAT::getPointShareNum()
 {
-	for (int i = 0; i < faces.size(); i++)
+	for (size_t i = 0; i < faces.size(); i++)
 	{
 		if (faces[i].is_degenerate())
 		{
@@ -444,7 +444,7 @@ void MAT::getEdgeShareNum()
 {
 	edge_share = vector<vector<int>>(points.size(), vector<int>(points.size(), 0));
 
-	for (int i = 0; i < faces.size(); i++)
+	for (size_t i = 0; i < faces.size(); i++)
 	{
 
 		if (faces[i].is_degenerate()) continue;
@@ -462,11 +462,10 @@ void MAT::getEdgeShareNum()
 }
 double MAT::computeBoundingBox()
 {
-	double maxdis = 0;
 	//compute bounding box
 	double INF = 999999999;
 	double maxx = -INF, maxy = -INF, maxz = -INF, minx = INF, miny = INF, minz = INF;
-	for (int i = 0; i < points.size(); i++) {
+	for (size_t i = 0; i < points.size(); i++) {
 		Point p = points[i];
 		if (p[0] > maxx) maxx = p[0];
 		if (p[0] < minx) minx = p[0];
@@ -490,7 +489,7 @@ double MAT::compute_face_mean_r(Face f)
 double MAT::compute_group_mean_r(vector<Face> group)
 {
 	double sum = 0;
-	for (int i = 0; i < group.size(); i++)
+	for (size_t i = 0; i < group.size(); i++)
 	{
 		double r = compute_face_mean_r(group[i]);
 		sum += r;
@@ -500,7 +499,7 @@ double MAT::compute_group_mean_r(vector<Face> group)
 double MAT::compute_point_patch_distance(Point& p, Patch pa)
 {
 	double mindis = 9999999;
-	for (int i = 0; i < pa.points.size(); i++)
+	for (size_t i = 0; i < pa.points.size(); i++)
 	{
 		Point p2 = pa.points[i];
 		double dis = pow(CGAL::squared_distance(p, p2), 0.5) - safe_radius(p2);
@@ -511,10 +510,10 @@ double MAT::compute_point_patch_distance(Point& p, Patch pa)
 }
 double MAT::compute_patch_closest_euclidean_distance(Patch& pa1, Patch& pa2) {
 	double min_dis = 9999999.9f;
-	for (int i = 0; i < pa1.points.size(); i++)
+	for (size_t i = 0; i < pa1.points.size(); i++)
 	{
 		Point p1 = pa1.points[i];
-		for (int j = 0; j < pa2.points.size(); j++)
+		for (size_t j = 0; j < pa2.points.size(); j++)
 		{
 			Point p2 = pa2.points[j];
 			double now_dis = CGAL::squared_distance(p1, p2);
@@ -572,8 +571,7 @@ double MAT::compute_face_angle(Face& f1, Face& f2)
 	//line and face
 	else if ((f1.is_degenerate() && !f2.is_degenerate()) || (!f1.is_degenerate() && f2.is_degenerate()))
 	{
-		double cos_normal = n1*n2;
-		double cos_angle = pow(1 - cos_normal*cos_normal, 0.5);
+		// Mixed degenerate/non-degenerate case - return 0
 		return 0;
 	}
 	else
@@ -843,8 +841,9 @@ double MAT::compute_face_slab_angle(Face& f1, Face& f2)
 
 			double ag1 = acos(cos1) / PI;
 			double ag2 = acos(cos2) / PI;
-			bool convex1 = checkFaceConvexwithTwoNormals(slab1[0], slab2[0], slabnormal1[0], slabnormal2[0]);
-			bool convex2 = checkFaceConvexwithTwoNormals(slab1[1], slab2[1], slabnormal1[1], slabnormal2[1]);
+			// convexity checks computed but not used - kept for potential future use
+			(void)checkFaceConvexwithTwoNormals(slab1[0], slab2[0], slabnormal1[0], slabnormal2[0]);
+			(void)checkFaceConvexwithTwoNormals(slab1[1], slab2[1], slabnormal1[1], slabnormal2[1]);
 
 			return (ag1 + ag2) / 2.0f;
 		}
@@ -1069,7 +1068,7 @@ int MAT::getLargestFaceIndexOfPatch(Patch& pa1)
 {
 	double max_r1 = 0.0f;
 	Face max_face1;
-	for (int i = 0; i < pa1.faces.size(); i++)
+	for (size_t i = 0; i < pa1.faces.size(); i++)
 	{
 		Face f1 = pa1.faces[i];
 		double now_r1 = compute_face_mean_r(f1);
@@ -1079,7 +1078,7 @@ int MAT::getLargestFaceIndexOfPatch(Patch& pa1)
 			max_face1 = f1;
 		}
 	}
-	for (int i = 0; i < faces.size(); i++)
+	for (size_t i = 0; i < faces.size(); i++)
 	{
 		if (faces[i] == max_face1)
 			return i;

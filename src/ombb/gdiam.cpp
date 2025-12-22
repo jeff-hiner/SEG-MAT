@@ -79,7 +79,7 @@ public:
     int  size() const {
         return  (int)( p_pnt_right - p_pnt_left );
     }
-    const gdiam_point  getCenter() const {
+    gdiam_point  getCenter() const {
         return   (gdiam_point)center;
     }
     int  nodes_number() const {
@@ -230,7 +230,7 @@ public:
         return  diam.distance;
     }
 
-    const gdiam_point  getPoint( int  ind ) const {
+    gdiam_point  getPoint( int  ind ) const {
         return  arr[ ind ];
     }
 
@@ -371,7 +371,7 @@ public:
     }
 
     void  init( GFSPTreeNode  * _left, GFSPTreeNode  * _right,
-                gdiam_point  proj_dir, gdiam_real dist )
+                gdiam_point  proj_dir )
     {
         left = _left;
         right = _right;
@@ -507,8 +507,7 @@ public:
     void  addPairHeap( g_heap_pairs_p  & heap,
                        GFSPTreeNode  * left,
                        GFSPTreeNode  * right,
-                       gdiam_point  proj,
-                       GFSPPair  & father );
+                       gdiam_point  proj );
     void  split_pair( GFSPPair  & pair,
                       g_heap_pairs_p  & heap, double  eps );
     void  split_pair_proj( GFSPPair  & pair,
@@ -795,7 +794,7 @@ void  GTreeDiamAlg::compute_by_heap_proj( double  eps,
 
     GFSPPair  root_pair;
 
-    root_pair.init( root, root, proj, 0 );
+    root_pair.init( root, root, proj );
 
     heap.push( root_pair );
 
@@ -864,8 +863,7 @@ void  GTreeDiamAlg::addPairHeap( g_heap_pairs_p  & heap,
 void  GTreeDiamAlg::addPairHeap( g_heap_pairs_p  & heap,
                                  GFSPTreeNode  * left,
                                  GFSPTreeNode  * right,
-                                 gdiam_point  proj,
-                                 GFSPPair  & father )
+                                 gdiam_point  proj )
 {
     const gdiam_point  p( *(left->ptr_pnt_left()) );
     const gdiam_point  q( *(right->ptr_pnt_left()) );
@@ -874,8 +872,7 @@ void  GTreeDiamAlg::addPairHeap( g_heap_pairs_p  & heap,
 
     GFSPPair  pair;
 
-    pair.init( left, right, proj,
-               pnt_distance( p, q, proj ) );
+    pair.init( left, right, proj );
     if  ( pair.maxDiam() <= pair_diam.distance )
         return;
     heap.push( pair );
@@ -909,39 +906,39 @@ void  GTreeDiamAlg::split_pair_proj( GFSPPair  & pair,
         addPairHeap( heap,
                      pair.get_left()->get_left(),
                      pair.get_right()->get_left(),
-                     proj, pair );
+                     proj );
         addPairHeap( heap,
                      pair.get_left()->get_left(),
                      pair.get_right()->get_right(),
-                     proj, pair );
+                     proj );
         // to avoid exponential blowup
         if  ( pair.get_left() != pair.get_right() )
             addPairHeap( heap,
                          pair.get_left()->get_right(),
                          pair.get_right()->get_left(),
-                         proj, pair );
+                         proj );
         addPairHeap( heap,
                      pair.get_left()->get_right(),
                      pair.get_right()->get_right(),
-                     proj, pair );
+                     proj );
         return;
     }
     if  ( f_is_left_splitable ) {
         addPairHeap( heap,
                      pair.get_left()->get_left(),
-                     pair.get_right(), proj, pair );
+                     pair.get_right(), proj );
         addPairHeap( heap,
                      pair.get_left()->get_right(),
-                     pair.get_right(), proj, pair );
+                     pair.get_right(), proj );
         return;
     }
     if  ( f_is_right_splitable ) {
         addPairHeap( heap,
                      pair.get_left(),
-                     pair.get_right()->get_left(), proj, pair );
+                     pair.get_right()->get_left(), proj );
         addPairHeap( heap,
                      pair.get_left(),
-                     pair.get_right()->get_right(), proj, pair );
+                     pair.get_right()->get_right(), proj );
         return;
     }
 }
@@ -1377,7 +1374,7 @@ point2d_ptr  get_min_point( vec_point_2d  & in,
 }
 
 
-const void  dump( vec_point_2d   & vec )
+void  dump( vec_point_2d   & vec )
 {
     for  ( int  ind = 0; ind < (int)vec.size(); ind++ ) {
         printf( "-- %11d (%-11g, %-11g)\n",
@@ -2124,8 +2121,7 @@ gdiam_bbox   gdiam_mvbb_optimize( gdiam_point  * start, int  size,
 }
 
 
-gdiam_bbox   gdiam_approx_mvbb( gdiam_point  * start, int  size,
-                                gdiam_real  eps )
+gdiam_bbox   gdiam_approx_mvbb( gdiam_point  * start, int  size )
 {
     gdiam_bbox  bb, bb2;
 

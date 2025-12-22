@@ -19,12 +19,12 @@ void segOneModel(string modeloff, string matpath, string smatpath, string output
 		return;
 	}
 
-	MAT smat(smatpath, mesh);
+	MAT smat(smatpath);
 	if (smat.points.size() == 0) {
 		cout << "structure MAT has no points! structural segmentation is skipped." << endl;
 	}
 
-	MAT mat(matpath, mesh);
+	MAT mat(matpath);
 	if (mat.points.size() == 0) {
 		cout << "base MAT has no points!" << endl;
 		return;
@@ -35,13 +35,13 @@ void segOneModel(string modeloff, string matpath, string smatpath, string output
 	cout << "transferring to surface (graph-cut) ..." << endl;
 	solver.transfer_MAT_mesh(mat, mesh, 0.3f);
 	
-	solver.saveColoredMesh(mat, mesh, colors, outputpath + name + "_seg.off");
+	solver.saveColoredMesh(mesh, colors, outputpath + name + "_seg.off");
 	cout << "segmentation result output finished." << endl;
 
 	if (prim_check)
 	{
 		cout << "computing primitive-based representation ... " << endl;
-		solver.primitiveAbstraction(mat, mesh, colors, outputpath + name + "_prim.off");
+		solver.primitiveAbstraction(mesh, colors, outputpath + name + "_prim.off");
 		cout << "primitives output finished. " << endl;
 	}
 }

@@ -8,7 +8,7 @@
 // #include <CGAL/Mean_curvature_flow_skeletonization.h>
 #include <CGAL/Triangulation_data_structure_3.h>
 #include <CGAL/AABB_tree.h>
-#include <CGAL/AABB_traits.h>
+#include <CGAL/AABB_traits_3.h>
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 #include <CGAL/point_generators_3.h>
 #include <CGAL/Orthogonal_k_neighbor_search.h>
@@ -42,7 +42,7 @@ typedef Mesh::Vertex_index							          Vertexi;
 typedef Mesh::Face_index							          Facei;
 typedef CGAL::Triangulation_data_structure_3<>                Tds;
 typedef CGAL::AABB_face_graph_triangle_primitive<Mesh> Primitive;
-typedef CGAL::AABB_traits<Kernel, Primitive> Traits;
+typedef CGAL::AABB_traits_3<Kernel, Primitive> Traits;
 typedef CGAL::AABB_tree<Traits> Tree;
 typedef CGAL::Simple_cartesian<double> K;
 typedef CGAL::Search_traits_3<K> TreeTraits;

@@ -16,7 +16,7 @@ public:
 	{
 
 		double sumx = 0, sumy = 0, sumz = 0;
-		for (int i = 0; i < points.size(); i++)
+		for (size_t i = 0; i < points.size(); i++)
 		{
 			sumx += points[i].x(); sumy += points[i].y(); sumz += points[i].z();
 		}

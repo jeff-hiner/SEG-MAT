@@ -109,8 +109,7 @@ int32_t segmat_segment(
                 struct_mat->edges.ptr,
                 static_cast<int>(struct_edge_count),
                 struct_mat->faces.ptr,
-                static_cast<int>(struct_face_count),
-                cgal_mesh);
+                static_cast<int>(struct_face_count));
         }
 
         // Create base MAT
@@ -121,8 +120,7 @@ int32_t segmat_segment(
             base_mat->edges.ptr,
             static_cast<int>(base_edge_count),
             base_mat->faces.ptr,
-            static_cast<int>(base_face_count),
-            cgal_mesh);
+            static_cast<int>(base_face_count));
 
         if (mat.points.size() == 0) {
             return SEGMAT_ERR_INVALID_SIZE;

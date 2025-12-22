@@ -358,7 +358,7 @@ protected:
 	struct SmoothCostFnFromArray {
 		SmoothCostFnFromArray(EnergyTermType* theArray, LabelID num_labels)
 			: m_array(theArray), m_num_labels(num_labels){}
-		OLGA_INLINE EnergyTermType compute(SiteID s1, SiteID s2, LabelID l1, LabelID l2){return m_array[l1*m_num_labels+l2];}
+		OLGA_INLINE EnergyTermType compute(SiteID /*s1*/, SiteID /*s2*/, LabelID l1, LabelID l2){return m_array[l1*m_num_labels+l2];}
 	private:
 		const EnergyTermType* const m_array;
 		const LabelID m_num_labels;
@@ -489,7 +489,7 @@ private:
 	class GreedyIter {
 	public:
 		GreedyIter(DataCostT& dc, SiteID numSites)
-		: m_dc(dc), m_site(0), m_numSites(numSites), m_label(0), m_lbegin(0), m_lend(0)
+		: m_site(0), m_dc(dc), m_numSites(numSites), m_label(0), m_lbegin(0), m_lend(0)
 		{ }
 
 		OLGA_INLINE void start(const LabelID* labels, LabelID labelCount=1)

@@ -10,7 +10,7 @@ public:
 
 	//build
 	MAT() : meshTree(nullptr) {};
-	MAT(string matfile, Mesh& mesh);
+	MAT(string matfile);
 
 	// Safe radius lookup with bounds checking
 	// Returns 0.0 if point not found or index out of range
@@ -29,8 +29,7 @@ public:
 	    const int32_t* edges,       // [edge_count * 2] - v0,v1 pairs
 	    int32_t edge_count,
 	    const int32_t* faces,       // [face_count * 3] - v0,v1,v2 triplets
-	    int32_t face_count,
-	    Mesh& mesh);
+	    int32_t face_count);
 
 	~MAT() {};
 
@@ -68,7 +67,7 @@ public:
 	vector<vector<int>> buildMATGraph(double t = 0.5);
 	vector<vector<int>> buildSMATGraph();
 	vector<vector<int>> buildVisGraph(vector<Patch> patches, double vis);
-	vector<vector<float>> buildEmdGraph(vector<vector<int>>& patchgraph);
+	vector<vector<float>> buildEmdGraph();
 	vector<vector<int>> buildMATGraph_pc(int N);
 	vector<int> transfer_SMAT_MAT(vector<Patch>& thin_parts, vector<Patch>& normal_parts);
 
@@ -83,7 +82,7 @@ public:
 	void MergeTinyPatches();
 	void MergePatches(vector<vector<int>>& patchgraph, vector<vector<float>>& emd_values, float max_emd, float merge_para);
 	void MergeIterations(bool use_vis = true);
-	vector<vector<float>> buildEmdGraph_afterSetPatch(vector<Patch>& patches, vector<vector<int>>& patchgraph);
+	vector<vector<float>> buildEmdGraph_afterSetPatch(vector<Patch>& patches);
 
 
 private:

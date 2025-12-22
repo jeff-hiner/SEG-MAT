@@ -67,7 +67,7 @@ void Decomposer::decompose3Dshape(MAT& mat, MAT& smat, Mesh& mesh, float growing
 	mat.MergeIterations();
 }
 
-void Decomposer::saveColoredMesh(MAT& mat, Mesh& mesh, vector<vector<float>> colors, string outputpath)
+void Decomposer::saveColoredMesh(Mesh& mesh, vector<vector<float>> colors, string outputpath)
 {
 	//save to file
 	std::ofstream out(outputpath, std::ios::out);
@@ -84,7 +84,6 @@ void Decomposer::saveColoredMesh(MAT& mat, Mesh& mesh, vector<vector<float>> col
 	BOOST_FOREACH(Facei f_index, mesh.faces()) {
 		out << "3";
 		BOOST_FOREACH(Vertexi v_index, vertices_around_face(mesh.halfedge(f_index), mesh)) {
-			Point meshp = mesh.point(v_index);
 			out << " " << int(v_index);
 		}
 		int label = final_facelabel[(int)f_index];
@@ -100,7 +99,7 @@ void Decomposer::saveColoredMesh(MAT& mat, Mesh& mesh, vector<vector<float>> col
 	out.close();
 };
 
-void Decomposer::saveSegResult(MAT & mat, Mesh & mesh, string outputpath)
+void Decomposer::saveSegResult(Mesh& mesh, string outputpath)
 {
 	std::ofstream out(outputpath, std::ios::out);
 
@@ -112,7 +111,7 @@ void Decomposer::saveSegResult(MAT & mat, Mesh & mesh, string outputpath)
 	out.close();
 }
 
-void Decomposer::primitiveAbstraction(MAT& mat, Mesh& mesh, vector<vector<float>> colors, string outputpath)
+void Decomposer::primitiveAbstraction(Mesh& mesh, vector<vector<float>> colors, string outputpath)
 {
 	vector<Eigen::Vector3d> prim_v;
 	vector<Eigen::Vector4i> prim_f;
@@ -138,12 +137,12 @@ void Decomposer::primitiveAbstraction(MAT& mat, Mesh& mesh, vector<vector<float>
 		if (vertices.size() == 0)
 			break;
 		Eigen::Vector3d center(0, 0, 0);
-		for (int i = 0; i < vertices.size(); i++)
+		for (size_t i = 0; i < vertices.size(); i++)
 		{
 			center += vertices[i];
 		}
-		center = center / float(vertices.size());
-		for (int i = 0; i < vertices.size(); i++)
+		center = center / static_cast<float>(vertices.size());
+		for (size_t i = 0; i < vertices.size(); i++)
 		{
 			vertices[i] = center + 0.85*(vertices[i] - center);
 		}
@@ -175,12 +174,12 @@ void Decomposer::primitiveAbstraction(MAT& mat, Mesh& mesh, vector<vector<float>
 	std::ofstream out(outputpath, std::ios::out);
 	out << "OFF" << endl;
 	out << prim_v.size() << " " << prim_f.size() << " 0" << endl;
-	for (int i = 0; i < prim_v.size(); i++)
+	for (size_t i = 0; i < prim_v.size(); i++)
 	{
 		out << prim_v[i][0] << " " << prim_v[i][1] << " " << prim_v[i][2] << endl;
 	}
 
-	for (int i = 0; i < prim_f.size(); i++)
+	for (size_t i = 0; i < prim_f.size(); i++)
 	{
 		int group = int(i / 6);
 		out << "4 " << prim_f[i][0] << " " << prim_f[i][1] << " " << prim_f[i][2] << " " << prim_f[i][3] << " " << int(colors[group][0]) << " " << int(colors[group][1]) << " " << int(colors[group][2]) << " " << int(colors[group][3]) << endl;
@@ -226,7 +225,6 @@ void Decomposer::transfer_MAT_mesh(MAT& mat, Mesh& mesh, float weight)
 	//faces need recompute
 	vector<vector<int>> data_term(face_num, vector <int>(label_num));
 	int enlarge = 10e4;
-	int begin = clock();
 
 
 	//data term
@@ -243,10 +241,10 @@ void Decomposer::transfer_MAT_mesh(MAT& mat, Mesh& mesh, float weight)
 
 		Point cp = CGAL::centroid(f);
 
-		for (int i = 0; i < mat.final_patch.size(); i++)
+		for (size_t i = 0; i < mat.final_patch.size(); i++)
 		{
 			double mindis = 9999999.99f;
-			for (int j = 0; j < mat.final_patch[i].points.size(); j++)
+			for (size_t j = 0; j < mat.final_patch[i].points.size(); j++)
 			{
 				Point nowp = mat.final_patch[i].points[j];
 				double nowdis = CGAL::squared_distance(cp, nowp);
@@ -278,10 +276,8 @@ void Decomposer::transfer_MAT_mesh(MAT& mat, Mesh& mesh, float weight)
 
 	BOOST_FOREACH(Facei i, mesh.faces()) {
 
-		Face f1 = all_faces[i];
 		BOOST_FOREACH(Facei j, faces_around_face(mesh.halfedge(i), mesh))
 		{
-			Face f2 = all_faces[(int)j];
 
 			Edge sharededge;
 			bool connect = checkTriangleConnect(all_faces[(int)i], all_faces[(int)j], sharededge);
@@ -330,7 +326,7 @@ void Decomposer::transfer_MAT_mesh(MAT& mat, Mesh& mesh, float weight)
 
 	// now set up a grid neighborhood system
 	for (int y = 0; y < face_num; y++)
-		for (int i = 0; i < face_graph[y].size(); i++) {
+		for (size_t i = 0; i < face_graph[y].size(); i++) {
 			int x = face_graph[y][i];
 			gc->setNeighbors(y, x, 1);
 		}

@@ -25,11 +25,14 @@ OPT ?= -O2
 INCLUDES = -Isrc -Isrc/emd -Isrc/graphcut -Isrc/ombb -Iinclude
 
 # Linker flags for WASM
+# STANDALONE_WASM: Emit standard WASM without Emscripten JS runtime dependencies
+# --no-entry: Library mode (no main function required)
 # STACK_SIZE: Default 64KB is too small - emd.cpp:russel() allocates ~82KB on stack
-# STACK_OVERFLOW_CHECK=2: Runtime stack checks (requires calling __wasm_call_ctors + emscripten_stack_init)
+# STACK_OVERFLOW_CHECK=2: Runtime stack checks
 LDFLAGS = -sWASM=1 \
+          -sSTANDALONE_WASM \
+          --no-entry \
           -sEXPORTED_FUNCTIONS="['_wasm_malloc','_wasm_free','_segmat_segment']" \
-          -sEXPORTED_RUNTIME_METHODS="['ccall','cwrap']" \
           -sALLOW_MEMORY_GROWTH=1 \
           -sINITIAL_MEMORY=134217728 \
           -sSTACK_SIZE=2097152 \

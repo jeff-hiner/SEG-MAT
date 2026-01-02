@@ -30,7 +30,7 @@ INCLUDES = -Isrc -Isrc/emd -Isrc/graphcut -Isrc/ombb -Iinclude
 LDFLAGS = -sWASM=1 \
           -sEXPORTED_FUNCTIONS="['_wasm_malloc','_wasm_free','_segmat_segment']" \
           -sEXPORTED_RUNTIME_METHODS="['ccall','cwrap']" \
-          -sALLOW_MEMORY_GROWTH=0 \
+          -sALLOW_MEMORY_GROWTH=1 \
           -sINITIAL_MEMORY=134217728 \
           -sSTACK_SIZE=2097152 \
           -sSTACK_OVERFLOW_CHECK=2

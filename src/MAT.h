@@ -1,7 +1,7 @@
 #pragma once
 #include "common_include.h"
 #include "Patch.h"
-#include "graphcut\GCoptimization.h"
+#include "graphcut/GCoptimization.h"
 #include <cstdint>
 
 class MAT
